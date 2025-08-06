@@ -4,8 +4,8 @@ services:
   app_proxy:
     environment:
       # Must be "<app-id>_<web-service-name>_1"
-      APP_HOST: acme-snappymail_web_1
-      APP_PORT: 8888
+      APP_HOST: yakitori-snappymail_web_1
+      APP_PORT: 3088
 
   web:
     image: djmaze/snappymail:latest
