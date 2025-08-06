@@ -1,0 +1,15 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      # Must be "<app-id>_<web-service-name>_1"
+      APP_HOST: acme-snappymail_web_1
+      APP_PORT: 8888
+
+  web:
+    image: djmaze/snappymail:latest
+    restart: on-failure
+    stop_grace_period: 1m
+    volumes:
+      - ${APP_DATA_DIR}/data:/var/lib/snappymail

@@ -1,0 +1,16 @@
+manifestVersion: 1
+id: acme-snappymail
+category: productivity
+name: SnappyMail
+version: "0.1.0"
+tagline: Fast, lightweight webmail (IMAP/SMTP).
+description: |
+  SnappyMail is a modern, lightweight webmail client.
+  This package runs the official container and persists data at ${APP_DATA_DIR}/data.
+developer: SnappyMail Project
+website: https://snappymail.eu
+repo: https://github.com/the-djmaze/snappymail
+support: https://github.com/the-djmaze/snappymail/issues
+port: 3088
+gallery: []
+path: ""
