@@ -15,20 +15,20 @@ x-environment: &env
   POSTGRES_DB: plane
   POSTGRES_USER: plane
   POSTGRES_PASSWORD: umbrelplane
-  DATABASE_URL: postgresql://plane:umbrelplane@plane_db_1:5432/plane
+  DATABASE_URL: postgresql://plane:umbrelplane@yakitori-plane_db_1:5432/plane
 
   # ---- Cache / broker ----
-  REDIS_URL: redis://plane_redis_1:6379/0
+  REDIS_URL: redis://yakitori-plane_redis_1:6379/0
   RABBITMQ_DEFAULT_USER: plane
   RABBITMQ_DEFAULT_PASS: umbrelplane
   RABBITMQ_DEFAULT_VHOST: plane
-  CELERY_BROKER_URL: amqp://plane:umbrelplane@plane_rabbitmq_1:5672/plane
+  CELERY_BROKER_URL: amqp://plane:umbrelplane@yakitori-plane_rabbitmq_1:5672/plane
 
   # ---- Object storage (MinIO; S3-compatible) ----
   USE_MINIO: 1
   AWS_ACCESS_KEY_ID: umbrel
   AWS_SECRET_ACCESS_KEY: $APP_PASSWORD
-  AWS_S3_ENDPOINT_URL: http://plane-minio-1:9000
+  AWS_S3_ENDPOINT_URL: http://yakitori-plane-minio-1:9000
   AWS_S3_BUCKET_NAME: uploads
   FILE_SIZE_LIMIT: 52428800  # 50 MB
   MINIO_ENDPOINT_SSL: 0
@@ -106,7 +106,7 @@ services:
     ports:
       - "8763:8763"
     # fails to connect if name contains underscore
-    container_name: plane-minio-1
+    container_name: yakitori-plane-minio-1
 
   api:
     image: makeplane/plane-backend:v1.3.0@sha256:60fb33fa75b63594c1b0bb62b9e50e05f03bb0e46ef384c9eec177f2fb1aaf02
