@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-kaneo_kaneo_1
+      APP_PORT: 5173
+
+  postgres:
+    image: postgres:16-alpine
+    restart: on-failure
+    env_file:
+      - ${APP_DATA_DIR}/app.env
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaneo -d kaneo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kaneo:
+    image: ghcr.io/usekaneo/kaneo:latest
+    restart: on-failure
+    env_file:
+      - ${APP_DATA_DIR}/app.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3

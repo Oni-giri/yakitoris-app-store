@@ -1,0 +1,22 @@
+manifestVersion: 1
+id: yakitori-kaneo
+category: productivity
+name: Kaneo
+version: "latest"
+tagline: All you need. Nothing you don't. Open source project management that works for you, not against you.
+description: |
+  Kaneo is an open-source project management platform with a clean, fast interface for teams who want less tool overhead and more focus.
+
+  This Umbrel package deploys Kaneo with PostgreSQL using the official combined container image.
+
+  Notes:
+    - Open Kaneo on port 5173 after installation.
+    - Set a strong AUTH_SECRET before production use.
+    - File uploads in task descriptions/comments require optional S3-compatible storage and are not enabled in this package by default.
+developer: Kaneo
+website: https://kaneo.app
+repo: https://github.com/usekaneo/kaneo
+support: https://github.com/usekaneo/kaneo/issues
+port: 5173
+gallery: []
+path: ""
