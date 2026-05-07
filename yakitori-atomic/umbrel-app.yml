@@ -1,0 +1,32 @@
+manifestVersion: 1
+id: yakitori-atomic
+category: productivity
+name: Atomic
+version: "latest"
+tagline: Self-hosted, semantically-connected personal knowledge base
+description: |
+  Atomic is a personal knowledge base that turns markdown notes into a semantically-connected, AI-augmented knowledge graph.
+
+  It stores knowledge as markdown notes, then automatically chunks, embeds, tags, and links them by semantic similarity.
+
+  Features:
+    - Semantic search across your notes
+    - AI-generated wiki synthesis with citations
+    - Interactive graph canvas for connected knowledge
+    - Chat over your knowledge base
+    - RSS ingestion and browser extension support
+    - Multiple AI providers including OpenRouter, Ollama, and OpenAI-compatible APIs
+
+  Notes:
+    - This package stores Atomic's SQLite database and app data inside Umbrel app storage.
+    - On first launch, complete the setup wizard in the web UI.
+    - To use AI features, configure an AI provider inside Atomic after installation.
+developer: kenforthewin
+website: https://atomicapp.ai
+repo: https://github.com/kenforthewin/atomic
+support: https://github.com/kenforthewin/atomic/issues
+port: 8764
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
