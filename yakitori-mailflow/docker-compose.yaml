@@ -1,0 +1,94 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: mailflow_frontend_1
+      APP_PORT: 80
+
+  frontend:
+    image: ghcr.io/maathimself/mailflow-frontend:1.1.3@sha256:136e1e722e5bbe5354e35fecb32b434cc1bf5eef67ac118e3b443e08996e68c3
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ${APP_DATA_DIR}/certs:/etc/nginx/ssl
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO/dev/null http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  backend:
+    image: ghcr.io/maathimself/mailflow-backend:1.1.3@sha256:1735d84534704faefc15b2e68afb72d634eebb74df6e057254da94849d607c26
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      # MailFlow app URL as seen from the browser.
+      # Must match the port in umbrel-app.yml below.
+      APP_URL: "http://${DEVICE_DOMAIN_NAME}:3395"
+      FRONTEND_URL: "http://${DEVICE_DOMAIN_NAME}:3395"
+
+      # Umbrel gives each app a deterministic 256-bit hex secret.
+      # It is stable for this app install and works for MailFlow's required secrets.
+      SESSION_SECRET: "${APP_SEED}"
+      ENCRYPTION_KEY: "${APP_SEED}"
+
+      DB_HOST: postgres
+      DB_NAME: mailflow
+      DB_USER: mailflow
+      DB_PASSWORD: "${APP_SEED}"
+
+      REDIS_URL: redis://redis:6379
+
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      VAPID_PUBLIC_KEY: ""
+      VAPID_PRIVATE_KEY: ""
+      VAPID_SUBJECT: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: on-failure
+    environment:
+      POSTGRES_DB: mailflow
+      POSTGRES_USER: mailflow
+      POSTGRES_PASSWORD: "${APP_SEED}"
+    volumes:
+      - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailflow -d mailflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: on-failure
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - ${APP_DATA_DIR}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
