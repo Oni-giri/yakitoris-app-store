@@ -3,7 +3,7 @@ version: "3.7"
 services:
   app_proxy:
     environment:
-      APP_HOST: mailflow_frontend_1
+      APP_HOST: yakitori-mailflow_frontend_1
       APP_PORT: 80
 
   frontend:
@@ -29,24 +29,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-
-      # MailFlow app URL as seen from the browser.
-      # Must match the port in umbrel-app.yml below.
       APP_URL: "http://${DEVICE_DOMAIN_NAME}:3395"
       FRONTEND_URL: "http://${DEVICE_DOMAIN_NAME}:3395"
-
-      # Umbrel gives each app a deterministic 256-bit hex secret.
-      # It is stable for this app install and works for MailFlow's required secrets.
       SESSION_SECRET: "${APP_SEED}"
       ENCRYPTION_KEY: "${APP_SEED}"
-
       DB_HOST: postgres
       DB_NAME: mailflow
       DB_USER: mailflow
       DB_PASSWORD: "${APP_SEED}"
-
       REDIS_URL: redis://redis:6379
-
       GOOGLE_CLIENT_ID: ""
       GOOGLE_CLIENT_SECRET: ""
       VAPID_PUBLIC_KEY: ""
