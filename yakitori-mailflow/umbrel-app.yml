@@ -1,5 +1,5 @@
 manifestVersion: 1
-id: mailflow
+id: yakitori-mailflow
 category: networking
 name: MailFlow
 version: "1.1.3"
