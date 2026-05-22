@@ -31,11 +31,11 @@ services:
       FRONTEND_URL: "http://${DEVICE_DOMAIN_NAME}:3395"
       SESSION_SECRET: "${APP_SEED}"
       ENCRYPTION_KEY: "${APP_SEED}"
-      DB_HOST: postgres
+      DB_HOST: yakitori-mailflow_postgres_1
       DB_NAME: mailflow
       DB_USER: mailflow
       DB_PASSWORD: "${APP_SEED}"
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://yakitori-mailflow_redis_1:6379
       GOOGLE_CLIENT_ID: ""
       GOOGLE_CLIENT_SECRET: ""
       VAPID_PUBLIC_KEY: ""
