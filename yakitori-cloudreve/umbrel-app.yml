@@ -23,9 +23,9 @@ submitter: oni-giri
 submission: https://github.com/getumbrel/umbrel-apps/pull/
 repo: https://github.com/cloudreve/Cloudreve
 support: https://github.com/cloudreve/Cloudreve/issues
-gallery:
-releaseNotes:
-dependencies:
+gallery: []
+releaseNotes: ""
+dependencies: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""

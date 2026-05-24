@@ -13,11 +13,11 @@ services:
       CR_CONF_Database.Type: postgres
       CR_CONF_Database.Host: db
       CR_CONF_Database.User: cloudreve
-      POSTGRES_HOST_AUTH_METHOD: trust
       CR_CONF_Database.Name: cloudreve
       CR_CONF_Database.Port: 5432
       CR_CONF_Redis.Server: redis:6379
-      CR_CONF_HTTP.Port: 5212
+      CR_CONF_System.Listen: ":5212"
+      CR_CONF_System.ProxyHeader: X-Forwarded-For
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 5212 || exit 1"]
       interval: 10s
@@ -26,7 +26,7 @@ services:
       start_period: 90s
     volumes:
       - ${APP_DATA_DIR}/data/cloudreve_data:/cloudreve/data:rw
-      - ${UMBREL_ROOT}/data/storage/:home
+      - ${UMBREL_ROOT}/data/storage:/home
     depends_on:
       db:
         condition: service_healthy
