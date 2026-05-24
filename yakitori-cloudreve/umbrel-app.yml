@@ -24,10 +24,7 @@ submission: https://github.com/getumbrel/umbrel-apps/pull/
 repo: https://github.com/cloudreve/Cloudreve
 support: https://github.com/cloudreve/Cloudreve/issues
 gallery:
-releaseNotes: >-
-  ## 5.4.0
-
-  - Update Cloudreve to version 5.4.0
+releaseNotes:
 dependencies:
 path: ""
 defaultUsername: ""
