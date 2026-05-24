@@ -26,7 +26,7 @@ services:
       start_period: 90s
     volumes:
       - ${APP_DATA_DIR}/data/cloudreve_data:/cloudreve/data:rw
-      - ${UMBREL_ROOT}/data/storage:/home
+      - ${UMBREL_ROOT}/home:/home
     depends_on:
       db:
         condition: service_healthy
@@ -39,10 +39,15 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "cloudreve", "-U", "cloudreve"]
+      # Authenticated query, NOT pg_isready: pg_isready reports "ready" as soon as Postgres
+      # accepts a connection — which on first-boot initdb happens before the cloudreve role
+      # and trust auth are usable, so the web app starts too early and panics with "password
+      # authentication failed". A real SELECT as cloudreve only succeeds once init completes.
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -U cloudreve -d cloudreve -tAc 'SELECT 1' || exit 1"]
       timeout: 45s
       interval: 10s
       retries: 10
+      start_period: 30s
     volumes:
       - ${APP_DATA_DIR}/data/postgres_data:/var/lib/postgresql/data:rw
     environment:
