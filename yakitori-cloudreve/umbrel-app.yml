@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-cloudreve
 name: Cloudreve
 tagline: A self-hosted file management system with multi-cloud support
-icon: ./yakitori-cloudreve/icon.png
+icon: https://raw.githubusercontent.com/dennysubke/dennys-umbrel-app-gallery/main/denny-cloudreve/logo.png
 category: files & productivity
 version: "5.4.0"
 port: 5212
