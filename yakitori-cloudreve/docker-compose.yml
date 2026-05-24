@@ -7,7 +7,7 @@ services:
       APP_PORT: 5212
 
   web:
-    image: cloudreve/cloudreve:latest
+    image: cloudreve/cloudreve:4.16.0@sha256:be8a6aa2a125a2de3288ba474b157192a8f1ab7699f80f4693e7288f70e8e4b0
     restart: on-failure
     environment:
       CR_CONF_Database.Type: postgres
