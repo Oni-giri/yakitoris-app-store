@@ -1,0 +1,48 @@
+manifestVersion: 1
+id: yakitori-archivebox
+category: files & productivity
+name: ArchiveBox
+version: "0.7.4"
+tagline: Self-hosted internet archive — save permanent snapshots of any website
+icon: https://archivebox.io/icon.png
+description: >-
+  ArchiveBox is a powerful, self-hosted internet archiving tool. Give it URLs
+  and it captures permanent, offline snapshots of those pages so you keep your
+  own copy even after the original goes offline, changes, or disappears behind a
+  paywall.
+
+
+  Every snapshot is saved in multiple redundant formats at once: the raw HTML,
+  a pixel-perfect SingleFile capture, a full-page screenshot, a printable PDF, a
+  clean readability "reader view" article, a WARC web archive, any embedded
+  media downloaded via yt-dlp, plus extracted favicons, titles and outgoing
+  links. Everything lives as plain files on your own disk, so your archive stays
+  readable and portable with no vendor lock-in.
+
+
+  You can add URLs one at a time, paste a whole list, or bulk-import from browser
+  bookmarks, Pocket, Pinboard, RSS feeds, and more. A built-in web UI lets you
+  browse, search the full text of, and manage your collection, and scheduled
+  crawls can keep recurring sources (like RSS feeds) archived automatically.
+
+
+  ArchiveBox bundles all of its archiving dependencies — headless Chrome, wget,
+  yt-dlp, SingleFile and readability — so it works out of the box on your Umbrel.
+releaseNotes: >-
+  Initial packaging of ArchiveBox 0.7.4 for Umbrel. An admin account (username
+  "admin", password "archivebox") is created automatically on first launch —
+  open the app, log in, and change the password from the admin panel right away.
+  ArchiveBox initializes its database on first boot, so allow a minute or two
+  before the web UI becomes reachable.
+developer: ArchiveBox
+website: https://archivebox.io
+dependencies: []
+repo: https://github.com/ArchiveBox/ArchiveBox
+support: https://github.com/ArchiveBox/ArchiveBox/issues
+port: 8000
+gallery: []
+path: ""
+defaultUsername: admin
+defaultPassword: archivebox
+submitter: Yakitori
+submission: ""
