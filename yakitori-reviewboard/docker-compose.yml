@@ -1,0 +1,88 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      # Nginx is the public entry point: it serves Review Board's static media
+      # and reverse-proxies everything else to the backend on :8080.
+      APP_HOST: yakitori-reviewboard_nginx_1
+      APP_PORT: 80
+
+  # PostgreSQL database. Internal-only — never exposed outside the app network,
+  # so Review Board connects directly as the Postgres user (no separate role).
+  db:
+    image: postgres:13-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: reviewboard
+      POSTGRES_PASSWORD: ReviewBoardUmbrelDB1
+      POSTGRES_DB: reviewboard
+    volumes:
+      - ${APP_DATA_DIR}/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reviewboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Memory cache used by Review Board. Reached as "memcached:11211", which is the
+  # MEMCACHED_SERVER default baked into the Review Board image.
+  memcached:
+    image: memcached:1.6-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    command: ["memcached", "-m", "128"] # 128 MB cache — plenty for a home server
+
+  # The Review Board backend (Gunicorn on :8080). Not accessed directly; Nginx
+  # sits in front of it. See scripts/entrypoint-wrapper.sh for why we wrap the
+  # image's own entrypoint.
+  reviewboard:
+    image: beanbag/reviewboard:7.0.6@sha256:e059c881ffaf9fa2adc2c3356eaa73d09b3883854c40832eed115432cc5736ee
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      db:
+        condition: service_healthy
+      memcached:
+        condition: service_started
+    # Wrap the image's /docker-entrypoint.sh so we can relax Django's strict
+    # ALLOWED_HOSTS after the site is initialized (see the script for details).
+    entrypoint: ["/bin/bash", "/umbrel/entrypoint-wrapper.sh"]
+    command: ["/serve.sh"]
+    environment:
+      DATABASE_TYPE: postgresql
+      DATABASE_SERVER: db
+      DATABASE_NAME: reviewboard
+      DATABASE_USERNAME: reviewboard
+      DATABASE_PASSWORD: ReviewBoardUmbrelDB1
+      MEMCACHED_SERVER: memcached:11211
+      # Used for internal state and the in-app support page. Change it later in
+      # Admin → General Settings if you like.
+      COMPANY: Review Board
+      # Sets the site's configured domain (used when generating absolute links,
+      # e.g. in notification emails). After first login you can set the full
+      # Server URL — including the :8087 port — under Admin → General Settings.
+      DOMAIN: ${DEVICE_DOMAIN_NAME}
+      # Power Pack is a commercial extension and needs a license; leave it off for
+      # a clean open-source install.
+      ENABLE_POWERPACK: "no"
+      # Gunicorn workers — kept modest for typical Umbrel hardware.
+      NUM_WORKERS: "2"
+    volumes:
+      # The Review Board site directory (config, data, static media). Shared with
+      # Nginx below so it can serve the static files Review Board generates.
+      - ${APP_DATA_DIR}/site:/site
+      - ${APP_DATA_DIR}/scripts/entrypoint-wrapper.sh:/umbrel/entrypoint-wrapper.sh:ro
+
+  # Front-end web server: serves static/media files and proxies the rest to the
+  # Review Board backend. This is what app_proxy points at.
+  nginx:
+    image: nginx:1.27-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      - reviewboard
+    volumes:
+      - ${APP_DATA_DIR}/site:/var/www/reviewboard
+      - ${APP_DATA_DIR}/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

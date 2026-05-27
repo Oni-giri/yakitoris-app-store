@@ -1,0 +1,53 @@
+manifestVersion: 1
+id: yakitori-reviewboard
+category: developer tools
+name: Review Board
+version: "7.0.6"
+tagline: Web-based code review and document review
+icon: https://github.com/reviewboard.png
+description: >-
+  Review Board is a powerful, self-hosted web application for reviewing code and
+  documents. It takes the pain out of code review, helping teams catch problems
+  early and ship better software.
+
+
+  Post changes for review straight from Git, Mercurial, Subversion, Perforce and
+  more, and reviewers can comment inline on individual lines of a diff, mark
+  issues that must be resolved, and track each change through to approval. Beyond
+  source code, Review Board can review images, PDFs and other documents, with
+  comments pinned directly to the region being discussed.
+
+
+  It integrates with the tools you already use — GitHub, GitLab, Bitbucket and
+  self-hosted repositories — and supports both pre-commit review (before changes
+  land) and post-commit review of already-committed history. Full-text search,
+  dashboards, review groups, and a REST API round out a system built to scale
+  from a single developer to a large team.
+
+
+  This package runs the official Review Board container alongside its own
+  PostgreSQL database, memcached cache and an Nginx front-end, all self-contained
+  on your Umbrel.
+releaseNotes: >-
+  Initial packaging of Review Board 7.0.6 for Umbrel. An administrator account is
+  created automatically on first launch — username "admin", password "admin".
+  Log in and change the password from your profile immediately.
+
+
+  First boot takes a few minutes: Review Board initializes its database, runs
+  migrations and copies static media before the web UI becomes reachable, so
+  please be patient after installing. The app is bundled with PostgreSQL,
+  memcached and an Nginx front-end, and stores all data under the app's data
+  directory.
+developer: Beanbag, Inc.
+website: https://www.reviewboard.org
+dependencies: []
+repo: https://github.com/reviewboard/reviewboard
+support: https://www.reviewboard.org/support/
+port: 8087
+gallery: []
+path: ""
+defaultUsername: admin
+defaultPassword: admin
+submitter: Yakitori
+submission: ""
