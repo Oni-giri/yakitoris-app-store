@@ -57,10 +57,23 @@ if [ ! -e "$SETTINGS_LOCAL" ]; then
     /docker-entrypoint.sh /bin/true
 fi
 
-# Relax ALLOWED_HOSTS. settings_local.py is plain Python, so a trailing
-# assignment wins; this is idempotent across restarts.
-if ! grep -q "^ALLOWED_HOSTS = \['\*'\]" "$SETTINGS_LOCAL"; then
-    echo "ALLOWED_HOSTS = ['*']" >> "$SETTINGS_LOCAL"
+# Apply Umbrel-specific overrides once. settings_local.py is plain Python imported
+# last, so these assignments win over rb-site's generated values:
+#   * ALLOWED_HOSTS — accept any host (we sit behind Umbrel's authenticated proxy,
+#     reached via umbrel.local, a Tailscale name, or the LAN IP interchangeably).
+#   * DB / cache host — pin to unique container names. All Umbrel apps share one
+#     Docker network, so the bare "db"/"memcached" names collide with other apps
+#     and the backend would authenticate against the wrong database (see compose).
+# Fresh installs already get the right DB/cache host from the environment; this
+# repairs existing installs that baked "db"/"memcached:11211" into the file.
+if ! grep -qF "Umbrel overrides (managed)" "$SETTINGS_LOCAL"; then
+    cat >> "$SETTINGS_LOCAL" <<'PYEOF'
+
+# --- Umbrel overrides (managed by entrypoint-wrapper.sh) ---
+ALLOWED_HOSTS = ['*']
+DATABASES['default']['HOST'] = 'yakitori-reviewboard_db_1'
+CACHES['default']['LOCATION'] = 'yakitori-reviewboard_memcached_1:11211'
+PYEOF
 fi
 
 # Hand off to the real entrypoint, which runs an (idempotent) upgrade and then

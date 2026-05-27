@@ -52,11 +52,17 @@ services:
     command: ["/serve.sh"]
     environment:
       DATABASE_TYPE: postgresql
-      DATABASE_SERVER: db
+      # IMPORTANT: every Umbrel app shares one Docker network (umbrel_main_network),
+      # so bare service names like "db"/"memcached" COLLIDE with other apps that use
+      # the same names (booklore, kan, docmost, ... all have a "db"). DNS then
+      # round-robins across all of them and the backend randomly authenticates
+      # against the wrong database. We must address our own containers by their
+      # unique container name "<app-id>_<service>_1" (same convention as APP_HOST).
+      DATABASE_SERVER: yakitori-reviewboard_db_1
       DATABASE_NAME: reviewboard
       DATABASE_USERNAME: reviewboard
       DATABASE_PASSWORD: ReviewBoardUmbrelDB1
-      MEMCACHED_SERVER: memcached:11211
+      MEMCACHED_SERVER: yakitori-reviewboard_memcached_1:11211
       # Used for internal state and the in-app support page. Change it later in
       # Admin → General Settings if you like.
       COMPANY: Review Board
