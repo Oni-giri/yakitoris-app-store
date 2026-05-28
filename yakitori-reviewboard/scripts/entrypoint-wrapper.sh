@@ -66,7 +66,7 @@ fi
 #     and the backend would authenticate against the wrong database (see compose).
 # Fresh installs already get the right DB/cache host from the environment; this
 # repairs existing installs that baked "db"/"memcached:11211" into the file.
-if ! grep -qF "Umbrel overrides (managed)" "$SETTINGS_LOCAL"; then
+if ! grep -qF "--- Umbrel overrides" "$SETTINGS_LOCAL"; then
     cat >> "$SETTINGS_LOCAL" <<'PYEOF'
 
 # --- Umbrel overrides (managed by entrypoint-wrapper.sh) ---
