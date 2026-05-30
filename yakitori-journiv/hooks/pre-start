@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve APP_DATA_DIR from this script's location (hooks/ sits in $APP_DATA_DIR).
+APP_DATA_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+
+# Journiv's image runs as appuser (uid 1000) and writes to /data; Valkey runs
+# as its own non-root user. Docker creates bind-mount sources as root with
+# mode 755 by default, so without this the journiv container crash-loops with
+# "Permission denied" on /data/media /data/logs at entrypoint. Make the data
+# dirs writable by any user inside the containers — Umbrel is a single-user
+# LAN appliance, this is the same pattern other apps use. Idempotent.
+for dir in data valkey; do
+    mkdir -p "${APP_DATA_DIR}/${dir}"
+    chmod -R a+rwX "${APP_DATA_DIR}/${dir}"
+done
