@@ -1,0 +1,44 @@
+manifestVersion: 1
+id: yakitori-journiv
+category: productivity
+name: Journiv
+version: "0.1.0-beta.23"
+tagline: Self-hosted private journal with mood tracking, prompts, and media
+icon: https://github.com/journiv.png
+description: >-
+  Journiv is a self-hosted private journal with a clean, minimal interface. Keep
+  daily entries, log your mood, answer guided prompts, attach photos and videos,
+  and find anything later through full-text search and built-in analytics.
+
+
+  Beyond plain text, Journiv supports rich media uploads (images, audio, video),
+  custom prompts to keep writing easy on days you don't know where to start, mood
+  and habit tracking with charts, tags, and an Immich integration so photos from
+  your Umbrel can be referenced inside entries.
+
+
+  This package runs the official Journiv container with its own background
+  worker, scheduler, and Valkey cache, using a local SQLite database that lives
+  under the app's data directory — nothing of yours ever leaves your Umbrel.
+
+
+  Heads up: Journiv is currently beta software and under active development. Keep
+  regular backups (Journiv's built-in import/export is enabled here).
+releaseNotes: >-
+  Initial packaging of Journiv 0.1.0-beta.23 for Umbrel. On first launch, open
+  the app and sign up to create your account — Journiv has no preconfigured admin
+  user. The bundled stack (Journiv app + Celery worker + Celery beat + Valkey)
+  stores all data under the app's data directory in a SQLite database; Journiv
+  itself is in beta, so back up regularly.
+developer: SwalabTech
+website: https://journiv.com
+dependencies: []
+repo: https://github.com/journiv/journiv-app
+support: https://discord.com/invite/CuEJ8qft46
+port: 8088
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""

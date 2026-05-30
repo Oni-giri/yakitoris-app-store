@@ -1,0 +1,76 @@
+version: "3.7"
+
+# Environment shared by the three journiv-app containers (app + celery worker +
+# celery beat). They all need the same DB + cache + secret config.
+#
+# IMPORTANT: every Umbrel app shares one Docker network (umbrel_main_network),
+# so bare service names like "valkey" / "redis" collide with other apps that use
+# the same names. We address our own Valkey by its unique container name
+# "yakitori-journiv_valkey_1" (same convention as APP_HOST below).
+x-journiv-common-env: &journiv-common-env
+  SECRET_KEY: ${APP_SEED} # derived from your Umbrel's per-app seed; stable across restarts
+  DOMAIN_NAME: ${DEVICE_DOMAIN_NAME}
+  DB_DRIVER: sqlite
+  DATABASE_URL: sqlite:////data/journiv.db
+  REDIS_URL: redis://yakitori-journiv_valkey_1:6379/0
+  CELERY_BROKER_URL: redis://yakitori-journiv_valkey_1:6379/0
+  CELERY_RESULT_BACKEND: redis://yakitori-journiv_valkey_1:6379/0
+  ENVIRONMENT: production
+
+# Base for every journiv-app container — same image, restart policy, data
+# volume, and dependency on Valkey being healthy.
+x-journiv-app-base: &journiv-app-base
+  image: swalabtech/journiv-app:0.1.0-beta.23@sha256:45133a332c0c9d77102e723d1b6292df44841a708582373cdbb1820e7f94001f
+  restart: on-failure
+  stop_grace_period: 1m
+  depends_on:
+    valkey:
+      condition: service_healthy
+  volumes:
+    - ${APP_DATA_DIR}/data:/data
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-journiv_app_1
+      APP_PORT: 8000
+
+  # Valkey (a Redis-compatible fork) — used for the Celery broker/result backend
+  # and the rate-limit store.
+  valkey:
+    image: valkey/valkey:9.0-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    volumes:
+      - ${APP_DATA_DIR}/valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # The Journiv web app (FastAPI + the bundled Flutter web frontend). The image
+  # runs alembic migrations and seeds data on boot, then serves Gunicorn on :8000.
+  # Its own HEALTHCHECK probes /api/v1/health, so Docker reports real readiness.
+  app:
+    <<: *journiv-app-base
+    environment:
+      <<: *journiv-common-env
+      SERVICE_ROLE: app
+      RATE_LIMIT_STORAGE_URI: redis://yakitori-journiv_valkey_1:6379/1
+
+  # Background worker for import/export and other async jobs.
+  celery-worker:
+    <<: *journiv-app-base
+    environment:
+      <<: *journiv-common-env
+      SERVICE_ROLE: celery-worker
+
+  # Scheduler for periodic tasks (uses RedBeat, hence its own Redis DB index).
+  celery-beat:
+    <<: *journiv-app-base
+    environment:
+      <<: *journiv-common-env
+      SERVICE_ROLE: celery-beat
+      REDBEAT_REDIS_URL: redis://yakitori-journiv_valkey_1:6379/2
