@@ -1,0 +1,57 @@
+manifestVersion: 1
+id: yakitori-onyx
+category: ai
+name: Onyx
+version: "4.0.5"
+tagline: Self-hosted AI assistant and search over your team's documents
+icon: https://github.com/onyx-dot-app.png
+description: >-
+  Onyx (formerly Danswer) is an open-source AI platform that connects to your
+  company's documents, apps, and people. Ask questions in a ChatGPT-style
+  interface and get answers grounded in your own knowledge, with citations back
+  to the source.
+
+
+  Connect any LLM — bring your own OpenAI / Anthropic / Azure key, or point Onyx
+  at a local model — and Onyx handles retrieval, ranking, and answering over
+  content you index from 40+ connectors (Google Drive, Confluence, Slack,
+  GitHub, web, files, and more). Embedding and reranking run locally on the
+  bundled model servers, so your documents are indexed on your own hardware.
+
+
+  This package runs the full official Onyx stack: the API server and background
+  workers, the Next.js web UI behind nginx, a Postgres database, an OpenSearch
+  vector/search index, Redis, a MinIO object store, and two HuggingFace model
+  servers for query- and indexing-time embeddings. Everything stays on your
+  Umbrel.
+
+
+  IMPORTANT — hardware: Onyx is a heavy application. Its docs recommend a
+  minimum of ~4 CPU cores and 10 GB of RAM, and 16 GB+ for comfortable use. It
+  is not suitable for low-memory devices (e.g. an 8 GB Raspberry Pi). First
+  launch is slow: the database is migrated and the model servers download
+  embedding models from HuggingFace before the app becomes reachable — this can
+  take several minutes.
+releaseNotes: >-
+  Initial packaging of Onyx 4.0.5 for Umbrel. On first launch, open the app and
+  create the first account via Sign Up — that account becomes the admin (Onyx
+  uses basic email/password auth here, with no preconfigured user). Then go to
+  Admin → LLM to add an LLM provider (your own API key or a local model), and
+  Admin → Connectors to start indexing your documents.
+
+
+  Give the app a few minutes on first boot: the API server runs database
+  migrations and the two model servers download embedding models before Onyx
+  responds.
+developer: Onyx
+website: https://www.onyx.app
+dependencies: []
+repo: https://github.com/onyx-dot-app/onyx
+support: https://docs.onyx.app
+port: 8095
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""

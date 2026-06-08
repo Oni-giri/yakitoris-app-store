@@ -1,0 +1,288 @@
+version: "3.7"
+
+# Onyx (formerly Danswer) packaged for Umbrel.
+#
+# Adapted from the upstream deployment compose at
+# https://github.com/onyx-dot-app/onyx/blob/v4.0.5/deployment/docker_compose/docker-compose.yml
+#
+# Two Umbrel-specific changes run through the whole file:
+#
+#   1. NETWORKING. Every Umbrel app shares one Docker network
+#      (umbrel_main_network), so bare service names like "cache", "minio",
+#      "relational_db" COLLIDE with other apps that use the same names — DNS then
+#      round-robins across all of them and connections land on the wrong
+#      container. We therefore address every internal service by its unique
+#      container name "<app-id>_<service>_1" (e.g. yakitori-onyx_cache_1) via
+#      Onyx's *_HOST env vars, instead of relying on the bare service name.
+#
+#   2. STORAGE. Upstream uses named volumes; Umbrel expects bind mounts under
+#      ${APP_DATA_DIR} so data lives with the app and is covered by Umbrel
+#      backups. The hooks/pre-start script creates and relaxes permissions on
+#      these dirs (the containers run as non-root and would otherwise crash on a
+#      root-owned bind mount).
+#
+# Dropped vs upstream: "code-interpreter" (mounts the host Docker socket — a
+# root-equivalent security risk, and only needed for the optional code-tool
+# feature) and "mcp_server" (commented out upstream).
+#
+# Heads up: this is a HEAVY stack (Postgres + OpenSearch + Redis + MinIO + two
+# HuggingFace model servers + API + background workers + Next.js). Onyx documents
+# a minimum of ~4 vCPU / 10 GB RAM and recommends 16 GB+. First boot is slow:
+# the API server runs DB migrations and the model servers download embedding
+# models from HuggingFace before the app becomes reachable.
+
+# ---------------------------------------------------------------------------
+# Shared env for the two backend containers (api_server + background). They run
+# the same image and need the same DB / search / cache / object-store config.
+# All hosts point at our own uniquely-named containers (see note 1 above).
+# ---------------------------------------------------------------------------
+x-onyx-backend-env: &onyx-backend-env
+  AUTH_TYPE: basic
+  # Signs password-reset / email-verify tokens. Derived from the per-app seed so
+  # it's stable across restarts and unique to this Umbrel.
+  USER_AUTH_SECRET: ${APP_SEED}
+  POSTGRES_HOST: yakitori-onyx_relational_db_1
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: OnyxUmbrelDB1
+  OPENSEARCH_HOST: yakitori-onyx_opensearch_1
+  OPENSEARCH_ADMIN_PASSWORD: StrongPassword123!
+  REDIS_HOST: yakitori-onyx_cache_1
+  MODEL_SERVER_HOST: yakitori-onyx_inference_model_server_1
+  INDEXING_MODEL_SERVER_HOST: yakitori-onyx_indexing_model_server_1
+  FILE_STORE_BACKEND: s3
+  S3_ENDPOINT_URL: http://yakitori-onyx_minio_1:9000
+  S3_AWS_ACCESS_KEY_ID: minioadmin
+  S3_AWS_SECRET_ACCESS_KEY: minioadmin
+  S3_FILE_STORE_BUCKET_NAME: onyx-file-store-bucket
+
+services:
+  app_proxy:
+    environment:
+      # Nginx is the public entry point: it serves the Next.js frontend and
+      # reverse-proxies /api, /openapi.json and /scim to the backend.
+      APP_HOST: yakitori-onyx_nginx_1
+      APP_PORT: 80
+
+  # ---- Frontend reverse proxy ---------------------------------------------
+  # Self-contained config (see nginx/onyx.conf). Replaces upstream's
+  # template/envsubst startup machinery; the upstream routing rules (/api
+  # rewrite, WebSocket upgrade, 5G uploads) are reproduced there verbatim.
+  nginx:
+    image: nginx:1.25.5-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      - api_server
+      - web_server
+    volumes:
+      - ${APP_DATA_DIR}/nginx/onyx.conf:/etc/nginx/conf.d/default.conf:ro
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+
+  # ---- Backend API (FastAPI / uvicorn on :8080) ---------------------------
+  # Runs alembic migrations on boot, then serves. The healthcheck below allows
+  # a long start period because first-boot migrations + model-server warmup take
+  # a while.
+  api_server:
+    image: onyxdotapp/onyx-backend:v4.0.5@sha256:1c5413e0d93c477718b3adbf2e20b05d0ffc8d0857e48c2017fcf36c489b2e92
+    restart: on-failure
+    stop_grace_period: 1m
+    command: >
+      /bin/sh -c "alembic upgrade head &&
+      echo \"Starting Onyx Api Server\" &&
+      uvicorn onyx.main:app --host 0.0.0.0 --port 8080"
+    depends_on:
+      relational_db:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      cache:
+        condition: service_started
+      inference_model_server:
+        condition: service_started
+      minio:
+        condition: service_started
+    environment:
+      <<: *onyx-backend-env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${APP_DATA_DIR}/data/file-system:/app/file-system
+    logging: *logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 600s
+
+  # ---- Background workers (Celery via supervisord) ------------------------
+  # Handles indexing, document processing and scheduled jobs.
+  background:
+    image: onyxdotapp/onyx-backend:v4.0.5@sha256:1c5413e0d93c477718b3adbf2e20b05d0ffc8d0857e48c2017fcf36c489b2e92
+    restart: on-failure
+    stop_grace_period: 1m
+    command: >
+      /bin/sh -c "
+      if [ -f /etc/ssl/certs/custom-ca.crt ]; then
+        update-ca-certificates;
+      fi &&
+      /app/scripts/supervisord_entrypoint.sh"
+    depends_on:
+      relational_db:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      cache:
+        condition: service_started
+      inference_model_server:
+        condition: service_started
+      indexing_model_server:
+        condition: service_started
+    environment:
+      <<: *onyx-backend-env
+      API_SERVER_PROTOCOL: http
+      API_SERVER_HOST: yakitori-onyx_api_server_1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${APP_DATA_DIR}/data/file-system:/app/file-system
+    logging: *logging
+
+  # ---- Next.js frontend (:3000) -------------------------------------------
+  web_server:
+    image: onyxdotapp/onyx-web-server:v4.0.5@sha256:8b94772be5732624d622399548bd185b4c9b10a2f3fb2685c7f1b41263e0a78b
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      - api_server
+    environment:
+      INTERNAL_URL: http://yakitori-onyx_api_server_1:8080
+    logging: *logging
+
+  # ---- Query-time embedding / rerank model server (:9000) -----------------
+  # Downloads HuggingFace models on first boot into the cache volume below.
+  inference_model_server:
+    image: onyxdotapp/onyx-model-server:v4.0.5@sha256:6e1b346434ae91bc083f195972f1cee81c2fdf1ae96a6eb471687d16174449ce
+    restart: on-failure
+    stop_grace_period: 1m
+    command: ["uvicorn", "model_server.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    volumes:
+      - ${APP_DATA_DIR}/data/hf-inference:/app/.cache/huggingface
+    logging: *logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:9000/api/health')",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 600s
+
+  # ---- Indexing-time embedding model server (:9000) -----------------------
+  indexing_model_server:
+    image: onyxdotapp/onyx-model-server:v4.0.5@sha256:6e1b346434ae91bc083f195972f1cee81c2fdf1ae96a6eb471687d16174449ce
+    restart: on-failure
+    stop_grace_period: 1m
+    command: ["uvicorn", "model_server.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    environment:
+      INDEXING_ONLY: "True"
+    volumes:
+      - ${APP_DATA_DIR}/data/hf-indexing:/app/.cache/huggingface
+    logging: *logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:9000/api/health')",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 600s
+
+  # ---- PostgreSQL ----------------------------------------------------------
+  relational_db:
+    image: postgres:15.2-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    shm_size: 1g
+    command: -c 'max_connections=250'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: OnyxUmbrelDB1
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  # ---- OpenSearch (search / vector index) ---------------------------------
+  # Replaces the old Vespa index. ~2 GB JVM heap; the single biggest memory
+  # consumer in the stack.
+  opensearch:
+    image: opensearchproject/opensearch:3.6.0
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=StrongPassword123!
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ${APP_DATA_DIR}/data/opensearch:/usr/share/opensearch/data
+    logging: *logging
+
+  # ---- Redis (ephemeral cache / Celery broker) ----------------------------
+  cache:
+    image: redis:7.4-alpine
+    restart: on-failure
+    stop_grace_period: 1m
+    command: redis-server --save "" --appendonly no
+    tmpfs:
+      - /data
+    logging: *logging
+
+  # ---- MinIO (S3-compatible object store / file store) --------------------
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z-cpuv1
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_DEFAULT_BUCKETS: onyx-file-store-bucket
+    volumes:
+      - ${APP_DATA_DIR}/data/minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    logging: *logging

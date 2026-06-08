@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve APP_DATA_DIR from this script's location (hooks/ sits in $APP_DATA_DIR).
+APP_DATA_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+
+# Onyx's containers run as non-root and write to bind-mounted data dirs. Docker
+# creates bind-mount sources as root:root mode 755 by default, so without this
+# the containers crash-looping on "Permission denied":
+#   - opensearch  runs as uid 1000 and needs to write its index data
+#   - postgres / minio / the model servers' HuggingFace caches likewise
+# Make the data dirs writable by any uid inside the containers. Umbrel is a
+# single-user LAN appliance, so this matches the pattern used by other apps.
+# Idempotent.
+for dir in \
+    data/postgres \
+    data/opensearch \
+    data/minio \
+    data/hf-inference \
+    data/hf-indexing \
+    data/file-system; do
+    mkdir -p "${APP_DATA_DIR}/${dir}"
+    chmod -R a+rwX "${APP_DATA_DIR}/${dir}"
+done
