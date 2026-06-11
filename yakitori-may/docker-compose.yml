@@ -1,0 +1,30 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-may_web_1
+      APP_PORT: 5050
+
+  web:
+    image: ghcr.io/dannymcc/may:0.23.0@sha256:46ee7df453fb1e3cd5992919440ee4086971966a438113ca5522cb2921dd4504
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      # Session signing key. APP_SEED is a stable per-app secret derived by Umbrel,
+      # so sessions persist across restarts.
+      SECRET_KEY: "${APP_SEED}"
+      DATABASE_URL: sqlite:////app/data/may.db
+      UPLOAD_FOLDER: /app/data/uploads
+      # Admin account auto-created on first run only. Change the password after
+      # first login; updating these values later has no effect once the user exists.
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: may
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5050/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
