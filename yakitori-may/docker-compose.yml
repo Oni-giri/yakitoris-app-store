@@ -16,10 +16,11 @@ services:
       SECRET_KEY: "${APP_SEED}"
       DATABASE_URL: sqlite:////app/data/may.db
       UPLOAD_FOLDER: /app/data/uploads
-      # Admin account auto-created on first run only. Change the password after
-      # first login; updating these values later has no effect once the user exists.
+      # Admin account auto-created on first run only, using the password Umbrel
+      # generates and shows in the app's info page. Updating this later has no
+      # effect once the user exists.
       ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: may
+      ADMIN_PASSWORD: ${APP_PASSWORD}
     volumes:
       - ${APP_DATA_DIR}/data:/app/data
     healthcheck:

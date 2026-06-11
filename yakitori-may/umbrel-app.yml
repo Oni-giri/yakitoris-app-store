@@ -6,24 +6,18 @@ version: "0.23.0"
 tagline: Self-hosted vehicle management and fuel tracking
 icon: https://raw.githubusercontent.com/dannymcc/may/main/app/static/icons/icon-512x512.png
 description: >-
-  May is a modern, self-hosted vehicle management application for tracking fuel
-  consumption, expenses, reminders, and maintenance across your entire fleet.
+  May is a self-hosted vehicle management app for tracking fuel consumption,
+  expenses, maintenance, and reminders across your fleet.
 
-  Track cars, vans, motorbikes, and scooters; log fill-ups with automatic
-  consumption calculations (L/100km, MPG); monitor maintenance, insurance,
-  repairs, tax, and other costs; and set up recurring reminders for MOT,
-  service, insurance, and tax renewals with multi-channel notifications
-  (Email, ntfy, Pushover, or Webhooks).
-
-  Other features include a multi-user analytics dashboard, document storage,
-  PDF reports, import/export (Fuelly CSV, JSON), UK DVLA MOT/tax lookup, Home
-  Assistant integration, calendar subscriptions, a REST API, PWA support, and
-  dark mode.
+  Log fill-ups with automatic consumption calculations, track costs by
+  category, set recurring reminders for MOT, service, insurance, and tax, and
+  view it all on a multi-user analytics dashboard. Includes import/export,
+  PDF reports, a REST API, Home Assistant integration, and PWA support.
 
   Named after James May, completing the trio of Top Gear presenters alongside
   Clarkson and Hammond.
 releaseNotes: ""
-developer: Danny Smith (dannymcc)
+developer: dannymcc
 website: https://github.com/dannymcc/may
 dependencies: []
 repo: https://github.com/dannymcc/may
@@ -37,6 +31,6 @@ gallery:
   - https://raw.githubusercontent.com/dannymcc/may/main/screenshots/import_export.png
 path: ""
 defaultUsername: "admin"
-defaultPassword: "may"
+defaultPassword: ""
 submitter: Yakitori
 submission: ""
