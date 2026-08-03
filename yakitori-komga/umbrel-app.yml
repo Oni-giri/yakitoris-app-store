@@ -25,7 +25,9 @@ releaseNotes: >-
   Initial packaging of Komga 1.25.0 for Umbrel. On first launch, open the app
   — since no account exists yet, Komga shows a "claim" screen where you set
   the admin email and password yourself. From there, add a library pointing
-  at a folder under /data and Komga will scan and organize it.
+  at a folder under /data and Komga will scan and organize it. Your Umbrel
+  Documents and Downloads folders are mounted read-only at /data/documents
+  and /data/downloads.
 developer: gotson
 website: https://komga.org
 dependencies: []

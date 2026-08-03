@@ -19,6 +19,10 @@ services:
       - ${APP_DATA_DIR}/config:/config
       # Point your libraries at subfolders of this directory from within Komga.
       - ${APP_DATA_DIR}/data:/data
+      # Umbrel's shared Documents and Downloads folders, read-only so Komga's
+      # library scan/metadata tools can't modify files you manage elsewhere.
+      - ${UMBREL_ROOT}/home/Documents:/data/documents:ro
+      - ${UMBREL_ROOT}/home/Downloads:/data/downloads:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:25600/actuator/health"]
       interval: 30s
