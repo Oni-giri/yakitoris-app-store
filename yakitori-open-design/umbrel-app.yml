@@ -1,0 +1,44 @@
+manifestVersion: 1
+id: yakitori-open-design
+category: ai
+name: Open Design
+version: "0.19.0"
+tagline: Open-source Claude Design alternative for prototypes, decks, images, and design systems
+icon: https://raw.githubusercontent.com/nexu-io/open-design/main/apps/web/public/app-icon.png
+description: >-
+  Open Design is the open-source Claude Design alternative — a local-first,
+  browser-based design studio that turns your coding agent into a design
+  engine. Pick a skill, a design system, and a brief, then stream real HTML
+  prototypes, live dashboards, pitch decks, images, and motion graphics,
+  all exportable to HTML, PDF, PPTX, or MP4.
+
+
+  This package runs the official Open Design daemon behind Umbrel's app
+  proxy, which handles authentication. Because the daemon sits behind that
+  trusted, already-authenticated reverse proxy, its internal API token
+  enforcement is disabled in the container, so the web UI works without any
+  manual token setup.
+
+
+  On first launch, open the app and choose a runtime. If you have a local
+  agent CLI (Claude Code, Codex, Cursor, etc.) installed, Open Design can
+  use it; otherwise add your own OpenAI / Anthropic / OpenAI-compatible
+  API key in Settings, or connect to Open Design Cloud. Then pick a design
+  system and template and start prompting.
+releaseNotes: >-
+  Initial packaging of Open Design 0.19.0 for Umbrel. The daemon runs in a
+  read-only container with data persisted under the app data directory.
+  Umbrel's app proxy authenticates requests, so the daemon's own API token
+  enforcement is disabled for a simpler local-network setup.
+developer: Nexu
+website: https://open-design.ai
+dependencies: []
+repo: https://github.com/nexu-io/open-design
+support: https://github.com/nexu-io/open-design/issues
+port: 7456
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""

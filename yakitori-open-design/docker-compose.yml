@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-open-design_open-design_1
+      APP_PORT: 7456
+
+  open-design:
+    image: ghcr.io/nexu-io/od:0.19.0@sha256:ae21ea6bfe46a2391ffae525d93f59b5215c943b0821785d343efe09b7ec608a
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=192"
+      OD_BIND_HOST: 0.0.0.0
+      OD_PORT: 7456
+      OD_WEB_PORT: ${APP_PROXY_PORT}
+      OD_DATA_DIR: /app/data
+      OD_ALLOWED_ORIGINS: "http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}"
+      OD_DISABLE_API_AUTH: "1"
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 384m
+    pids_limit: 256
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://127.0.0.1:7456/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
