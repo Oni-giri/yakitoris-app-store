@@ -17,7 +17,7 @@ services:
       OD_PORT: 7456
       OD_WEB_PORT: ${APP_PROXY_PORT}
       OD_DATA_DIR: /app/data
-      OD_ALLOWED_ORIGINS: "${APP_YAKITORI_OPEN_DESIGN_ALLOWED_ORIGINS:-http://umbrel.local:7456,https://umbrel.local:7456}"
+      OD_ALLOWED_ORIGINS: "${APP_YAKITORI_OPEN_DESIGN_ALLOWED_ORIGINS:-http://umbrel.local:7456,https://umbrel.local:7456,http://umbrel.local,https://umbrel.local}"
       OD_DISABLE_API_AUTH: "1"
     volumes:
       - ${APP_DATA_DIR}/data:/app/data

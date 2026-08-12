@@ -17,9 +17,9 @@ if [ -n "$TAILSCALE_STATUS" ]; then
   PUBLIC_DOMAIN=$(printf '%s' "$TAILSCALE_STATUS" | python3 -c 'import sys, json; d=json.load(sys.stdin); print(d.get("Self", {}).get("DNSName", "").rstrip("."))')
 fi
 
-ORIGINS="http://${LOCAL_DOMAIN}:${PROXY_PORT},https://${LOCAL_DOMAIN}:${PROXY_PORT}"
+ORIGINS="http://${LOCAL_DOMAIN}:${PROXY_PORT},https://${LOCAL_DOMAIN}:${PROXY_PORT},http://${LOCAL_DOMAIN},https://${LOCAL_DOMAIN}"
 if [ -n "$PUBLIC_DOMAIN" ]; then
-  ORIGINS="${ORIGINS},http://${PUBLIC_DOMAIN}:${PROXY_PORT},https://${PUBLIC_DOMAIN}:${PROXY_PORT}"
+  ORIGINS="${ORIGINS},http://${PUBLIC_DOMAIN}:${PROXY_PORT},https://${PUBLIC_DOMAIN}:${PROXY_PORT},http://${PUBLIC_DOMAIN},https://${PUBLIC_DOMAIN}"
 fi
 
 printf 'APP_YAKITORI_OPEN_DESIGN_ALLOWED_ORIGINS=%s\n' "$ORIGINS" > "${APP_DATA_DIR}/.env"
