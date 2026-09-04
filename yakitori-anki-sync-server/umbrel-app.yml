@@ -1,0 +1,41 @@
+manifestVersion: 1
+id: yakitori-anki-sync-server
+category: files
+name: Anki Sync Server
+version: "26.08"
+tagline: Privately sync Anki decks across your devices
+icon: https://github.com/ankitects.png
+description: >-
+  Anki Sync Server keeps your flashcard collection and media synchronized
+  between Anki on desktop, AnkiMobile, and AnkiDroid without storing your data
+  on AnkiWeb. It runs the official sync-server implementation from the Anki
+  project and stores its data locally on your Umbrel.
+
+
+  Connect each Anki client to http://umbrel.local:27701/ (replace
+  umbrel.local with your Umbrel's hostname or IP address). Sign in with the
+  username "anki" and the password shown in this app's details. The Local Anki
+  Server add-on can make switching between AnkiWeb and this private server
+  easier on desktop.
+
+
+  The server uses unencrypted HTTP. Keep it on your trusted local network, or
+  access it remotely through a private VPN such as Tailscale. Do not expose the
+  port directly to the public internet.
+releaseNotes: >-
+  Initial packaging of Anki Sync Server 26.08. Collection and media data are
+  persisted under the app data directory. The server supports current Anki
+  desktop and mobile clients and allows sync payloads up to 250 MB.
+developer: Ankitects Pty Ltd and contributors
+website: https://apps.ankiweb.net/
+dependencies: []
+repo: https://github.com/ankitects/anki
+support: https://docs.ankiweb.net/sync-server.html
+port: 27701
+gallery: []
+path: ""
+defaultUsername: anki
+deterministicPassword: true
+submitter: Yakitori
+submission: ""
+
