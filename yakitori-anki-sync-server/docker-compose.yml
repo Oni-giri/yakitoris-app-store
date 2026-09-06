@@ -3,24 +3,11 @@ version: "3.7"
 services:
   app_proxy:
     environment:
-      APP_HOST: yakitori-anki-sync-server_web_1
-      APP_PORT: 80
+      APP_HOST: yakitori-anki-sync-server_server_1
+      APP_PORT: 8080
       # Anki clients cannot complete Umbrel's browser login flow. The sync
-      # server authenticates every sync using SYNC_USER1 instead. The landing
-      # page has no secrets; the password lives in the umbrelOS app details.
+      # server authenticates every sync using SYNC_USER1 instead.
       PROXY_AUTH_ADD: "false"
-
-  # Status/setup page at GET /, reverse-proxy of /sync /msync /health to the
-  # Anki server. Needed because anki-sync-server has no web UI of its own.
-  web:
-    image: nginx:1.27@sha256:124b44bfc9ccd1f3cedf4b592d4d1e8bddb78b51ec2ed5056c52d3692baebc19
-    restart: on-failure
-    stop_grace_period: 1m
-    depends_on:
-      - server
-    volumes:
-      - ${APP_DATA_DIR}/www:/usr/share/nginx/html:ro
-      - ${APP_DATA_DIR}/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
   server:
     # Multi-architecture image built from Anki's official sync-server source.
@@ -35,4 +22,3 @@ services:
       PGID: "1000"
     volumes:
       - ${APP_DATA_DIR}/data:/anki_data
-

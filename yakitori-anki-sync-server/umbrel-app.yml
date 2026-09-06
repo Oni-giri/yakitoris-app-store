@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-anki-sync-server
 category: files
 name: Anki Sync Server
-version: "26.08.1"
+version: "26.08.2"
 tagline: Privately sync Anki decks across your devices
 icon: https://github.com/ankitects.png
 description: >-
@@ -12,23 +12,23 @@ description: >-
   project and stores its data locally on your Umbrel.
 
 
-  This is a sync server, not a website for reviewing cards. Opening the app in
-  your browser shows a status page with the Sync URL and setup steps. Connect
-  each Anki client to that URL (http://umbrel.local:27701/ if you use the
-  default hostname). Sign in with the username "anki" and the password shown
-  in this app's details. The Local Anki Server add-on can make switching
-  between AnkiWeb and this private server easier on desktop.
+  This is not a website. Opening it in a browser returns 404 because the
+  server only speaks the Anki sync protocol (/sync and /msync). Review cards
+  in the Anki app. Connect each client to http://umbrel.local:27701/ (replace
+  umbrel.local with your Umbrel's hostname or Tailscale name). Sign in with
+  the username "anki" and the password shown in this app's details. Include
+  the trailing slash. The Local Anki Server add-on can make switching between
+  AnkiWeb and this private server easier on desktop.
 
 
   The server uses unencrypted HTTP. Keep it on your trusted local network, or
   access it remotely through a private VPN such as Tailscale. Do not expose the
   port directly to the public internet.
 releaseNotes: >-
-  Opening the app in a browser now shows a status page with connection details
-  and client setup steps. The official Anki sync server has no web UI of its
-  own (GET / was 404), so the previous package looked broken when opened from
-  umbrelOS. Sync still uses the same URL; collection and media data remain
-  under the app data directory, with payloads up to 250 MB.
+  Removed the extra nginx reverse proxy. It was only there to turn the
+  browser 404 at / into a status page; Anki clients never use that path.
+  The official server has no web UI. Open Anki on your devices and point
+  them at this app's URL instead.
 developer: Ankitects Pty Ltd and contributors
 website: https://apps.ankiweb.net/
 dependencies: []
