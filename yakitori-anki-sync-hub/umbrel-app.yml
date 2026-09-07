@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-anki-sync-hub
 category: automation
 name: Anki Sync Hub
-version: "0.1.2"
+version: "0.1.3"
 tagline: Private Anki sync and AI deck automation
 description: >-
   Run a private Anki sync service on your Umbrel, manage sync accounts from a
@@ -21,10 +21,9 @@ description: >-
   Anki is a registered trademark of Ankitects Pty Ltd. This project is not
   affiliated with or endorsed by Ankitects.
 releaseNotes: >-
-  Redesigns the complete interface with a responsive Swiss-style system grid,
-  IBM-inspired typography, sharper information hierarchy, and coordinated
-  light and dark themes. All account, sync, metrics, and MCP workflows remain
-  unchanged.
+  Improves the mobile dashboard layout with consistently aligned account
+  panels, a compact two-column metrics grid, safer server-address wrapping,
+  and tighter small-screen spacing.
 developer: Oni-giri
 website: https://github.com/Oni-giri/anki-sync-hub
 dependencies: []
