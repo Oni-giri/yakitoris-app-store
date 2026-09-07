@@ -10,7 +10,7 @@ services:
       PROXY_AUTH_WHITELIST: "/sync/*,/msync/*,/mcp,/mcp/*"
 
   web:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
     user: "1000:1000"
     command: web
     restart: on-failure
@@ -20,6 +20,10 @@ services:
       ANKI_HUB_DATA_DIR: /data
       ANKI_HUB_SYNC_URL: http://sync:8081
       ANKI_HUB_MCP_URL: http://mcp:8082
+      # Umbrel displays these credentials in the standard app details dialog.
+      # The password is hashed into the database only when no owner exists.
+      ANKI_HUB_ADMIN_USERNAME: admin
+      ANKI_HUB_ADMIN_PASSWORD: "${APP_PASSWORD}"
     volumes:
       - ${APP_DATA_DIR}/data:/data
     depends_on:
@@ -27,7 +31,7 @@ services:
       - mcp
 
   sync:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
     user: "1000:1000"
     command: sync-supervisor
     restart: on-failure
@@ -40,7 +44,7 @@ services:
       - ${APP_DATA_DIR}/data:/data
 
   mcp:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
     user: "1000:1000"
     command: mcp
     restart: on-failure
