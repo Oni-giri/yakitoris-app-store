@@ -10,7 +10,7 @@ services:
       PROXY_AUTH_WHITELIST: "/sync/*,/msync/*,/mcp,/mcp/*"
 
   web:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.2@sha256:27b93c091f4642b47888f66401d948e8bfb5469896b4c155f5cde8e026443507
     user: "1000:1000"
     command: web
     restart: on-failure
@@ -31,7 +31,7 @@ services:
       - mcp
 
   sync:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.2@sha256:27b93c091f4642b47888f66401d948e8bfb5469896b4c155f5cde8e026443507
     user: "1000:1000"
     command: sync-supervisor
     restart: on-failure
@@ -44,7 +44,7 @@ services:
       - ${APP_DATA_DIR}/data:/data
 
   mcp:
-    image: ghcr.io/oni-giri/anki-sync-hub:0.1.1@sha256:070a6942c5fab0ef6240036fa23e29802202ae846672bdc24350cee28e5bde16
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.2@sha256:27b93c091f4642b47888f66401d948e8bfb5469896b4c155f5cde8e026443507
     user: "1000:1000"
     command: mcp
     restart: on-failure
