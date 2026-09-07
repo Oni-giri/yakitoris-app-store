@@ -1,0 +1,56 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-anki-sync-hub_web_1
+      APP_PORT: 8080
+      # Anki and MCP clients cannot provide an Umbrel browser session.
+      # The sync protocol and MCP bearer tokens protect these narrow routes.
+      PROXY_AUTH_WHITELIST: "/sync/*,/msync/*,/mcp,/mcp/*"
+
+  web:
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    user: "1000:1000"
+    command: web
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    environment:
+      ANKI_HUB_DATA_DIR: /data
+      ANKI_HUB_SYNC_URL: http://sync:8081
+      ANKI_HUB_MCP_URL: http://mcp:8082
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+    depends_on:
+      - sync
+      - mcp
+
+  sync:
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    user: "1000:1000"
+    command: sync-supervisor
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    environment:
+      ANKI_HUB_DATA_DIR: /data
+      ANKI_HUB_SYNC_PORT: "8081"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+
+  mcp:
+    image: ghcr.io/oni-giri/anki-sync-hub:0.1.0@sha256:5259eef99560e702744704240b653a62ba03fb2bc7fe033d90506b84301e185d
+    user: "1000:1000"
+    command: mcp
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    environment:
+      ANKI_HUB_DATA_DIR: /data
+      ANKI_HUB_SYNC_URL: http://sync:8081
+      ANKI_HUB_MCP_PORT: "8082"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+    depends_on:
+      - sync

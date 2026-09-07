@@ -1,0 +1,37 @@
+manifestVersion: 1
+id: yakitori-anki-sync-hub
+category: automation
+name: Anki Sync Hub
+version: "0.1.0"
+tagline: Private Anki sync and AI deck automation
+description: >-
+  Run a private Anki sync service on your Umbrel, manage sync accounts from a
+  browser, and connect AI tools through a scoped MCP endpoint.
+
+
+  After installation, open the app to create the owner account and your first
+  Anki sync account. No SSH, configuration-file editing, or container restart
+  is required.
+
+
+  This app is intended for your local network or a private Tailscale network.
+  Do not expose its plain HTTP endpoint directly to the public internet.
+
+
+  Anki is a registered trademark of Ankitects Pty Ltd. This project is not
+  affiliated with or endorsed by Ankitects.
+releaseNotes: >-
+  Initial experimental release with browser-based account management, sync
+  metrics, and scoped MCP access for AI deck automation.
+developer: Oni-giri
+website: https://github.com/Oni-giri/anki-sync-hub
+dependencies: []
+repo: https://github.com/Oni-giri/anki-sync-hub
+support: https://github.com/Oni-giri/anki-sync-hub/issues
+port: 8723
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Oni-giri
+submission: ""
