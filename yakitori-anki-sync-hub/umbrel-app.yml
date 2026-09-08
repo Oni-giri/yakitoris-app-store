@@ -2,12 +2,13 @@ manifestVersion: 1
 id: yakitori-anki-sync-hub
 category: automation
 name: Anki Sync Hub
-version: "0.1.8"
+version: "0.1.9"
 tagline: Private Anki sync and AI deck automation
-icon: https://raw.githubusercontent.com/Oni-giri/anki-sync-hub/v0.1.8/assets/icon.svg
+icon: https://raw.githubusercontent.com/Oni-giri/anki-sync-hub/v0.1.9/assets/icon.svg
 description: >-
   Run a private Anki sync service on your Umbrel, manage sync accounts from a
-  browser, and connect AI tools through a scoped MCP endpoint.
+  browser, call a scoped REST API from scripts, and connect AI tools through a
+  scoped MCP endpoint.
 
 
   Sign in as admin with the generated password shown in Umbrel's app details,
@@ -22,9 +23,9 @@ description: >-
   Anki is a registered trademark of Ankitects Pty Ltd. This project is not
   affiliated with or endorsed by Ankitects.
 releaseNotes: >-
-  Fixes MCP token creation, opens the connection guide automatically after a
-  token is created, stabilizes the token form and write-access control, and
-  presents matching guide and create actions across desktop and mobile layouts.
+  Adds a bearer-token REST API for listing and creating decks, searching notes,
+  and adding notes. REST and MCP share per-account read/write tokens, and the
+  connection guide now includes endpoints, an OpenAPI schema, and a cURL example.
 developer: Oni-giri
 website: https://github.com/Oni-giri/anki-sync-hub
 dependencies: []
