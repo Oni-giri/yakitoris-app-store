@@ -1,0 +1,44 @@
+manifestVersion: 1
+id: yakitori-octop
+category: ai
+name: Octop
+version: "1.0.2b6"
+tagline: Self-hosted, multi-user, multi-agent AI assistant
+icon: https://raw.githubusercontent.com/TencentCloud/Octop/main/dashboard/public/pwa-512.png
+description: >-
+  Octop is an open-source, self-hosted AI assistant for households and small
+  teams. One process serves a web dashboard, CLI, IM channels (Telegram,
+  Discord, Feishu, DingTalk, WeChat, ...) and cron automation, with all data
+  kept on your Umbrel.
+
+
+  Each user gets a personal team of expert agents with their own workspace,
+  memory, knowledge base (RAG), connectors (OAuth + MCP) and plugins. Octop
+  also includes a browser terminal with AI assistance, headless browser
+  automation and AgentTeams for multi-step work.
+
+
+  Octop needs an AI model: after signing in, add an OpenAI-compatible,
+  DashScope or other provider API key, or point it at a local model such as
+  Ollama via its OpenAI-compatible endpoint.
+
+
+  Sign in with the username "admin" and the password shown in this app's
+  info panel, then change it from the avatar menu. Octop has its own login,
+  so Umbrel's app login is not added in front of it.
+releaseNotes: >-
+  Initial packaging of Octop 1.0.2b6 (multi-arch: amd64 and arm64). Data is
+  persisted under the app data directory. The first admin password is derived
+  from your Umbrel's app seed.
+developer: Tencent Cloud
+website: https://octop.cloud
+dependencies: []
+repo: https://github.com/TencentCloud/Octop
+support: https://github.com/TencentCloud/Octop/issues
+port: 8105
+gallery: []
+path: ""
+defaultUsername: "admin"
+deterministicPassword: true
+submitter: Yakitori
+submission: ""

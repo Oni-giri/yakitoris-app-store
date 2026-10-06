@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-octop_octop_1
+      APP_PORT: 8088
+      # Octop has its own multi-user login (JWT). Skipping Umbrel's proxy login
+      # avoids a double sign-in and lets IM channel webhooks (Telegram, Feishu,
+      # ...) reach Octop without an Umbrel session cookie.
+      PROXY_AUTH_ADD: "false"
+
+  # Single process serving the web dashboard, API, WebSockets, IM channels and
+  # cron. The dashboard calls the API on the same origin, so no CORS config is
+  # needed when browsing via umbrel.local, the LAN IP or a Tailscale address.
+  octop:
+    # Pinned to 1.0.2b6: the 1.0.x stable tags are only built for amd64.
+    image: ghcr.io/tencentcloud/octop:1.0.2b6@sha256:80d3a75ffafef1108b520b6b28e7c802c0ece3c6edbf5f26edae9f7d14b18909
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      HOME: /data
+      OCTOP_BIND_HOST: 0.0.0.0
+      OCTOP_PORT: 8088
+      OCTOP_LOG_LEVEL: info
+      OCTOP_ADMIN_USERNAME: admin
+      OCTOP_ADMIN_DISPLAY_NAME: Admin
+      # Only used on first boot; derived from your Umbrel's per-app seed and
+      # shown in the app's info panel (deterministicPassword).
+      OCTOP_DEFAULT_PASSWORD: ${APP_PASSWORD}
+      LANGFUSE_TRACING_ENABLED: "false"
+    volumes:
+      - ${APP_DATA_DIR}/data/.octop:/data/.octop
