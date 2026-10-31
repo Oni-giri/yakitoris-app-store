@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# A fallback, after the app stops (also on restart, update and uninstall):
+# BrowserPier stops its browsers itself on the way out
+# (BROWSERPIER_STOP_BROWSERS_ON_EXIT), so this only catches any it didn't,
+# say if it was killed. `docker stop` closes Chromium gracefully, so logins
+# are kept; BrowserPier records those sessions as failed at its next start.
+set -euo pipefail
+
+APP_DIR="${APP_DATA_DIR:-$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")}"
+web="yakitori-browserpier_web_1"
+
+# The data folder as mounted, in case it was moved to another drive.
+data="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "${web}" 2>/dev/null || true)"
+data="${data:-${APP_DATA_ROOT:-${APP_DIR}/data}}"
+instance="$(cat "${data}/instance-id" 2>/dev/null || true)"
+if [[ -z "${instance}" ]]; then
+  echo "BrowserPier: no instance ID in ${data}; no browsers to stop"
+  exit 0
+fi
+
+mapfile -t browsers < <(docker ps -q --filter "label=io.browserpier.managed" --filter "label=io.browserpier.instance=${instance}")
+if (( ${#browsers[@]} > 0 )); then
+  echo "BrowserPier: stopping ${#browsers[@]} browser(s) left running"
+  docker stop "${browsers[@]}" >/dev/null
+fi

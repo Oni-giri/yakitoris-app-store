@@ -1,0 +1,57 @@
+# umbrelOS 2.0 or later: its proxy, part of umbreld, is the one whose
+# forwarded client addresses BrowserPier believes.
+manifestVersion: 2.0
+id: yakitori-browserpier
+storage:
+  dataRoot: data
+category: developer
+name: BrowserPier
+version: "0.1.0"
+tagline: Persistent browsers your AI agents can borrow
+icon: https://raw.githubusercontent.com/Oni-giri/browser-pier/main/internal/ui/static/icon.svg
+description: >-
+  BrowserPier keeps one real Chromium per profile on your Umbrel. Log in to a
+  site once; your agents (Claude Code, Playwright scripts, anything that speaks
+  CDP, REST or MCP) reuse that session, and the login survives restarts.
+
+
+  Watch any browser live, take control when an agent gets stuck, and let agents
+  send you a one-time link for a 2FA prompt or a CAPTCHA, to finish from your
+  phone.
+
+
+  Sign in with the app password shown under Info. Then, in Settings, set a
+  handoff PIN, and under Agents create a token for each agent.
+
+
+  Good to know:
+
+
+  - BrowserPier starts a container per running browser through Umbrel's Docker
+  socket. That is close to full control of your Umbrel, which is why it isn't in
+  the official App Store. Install it only if you trust it as you trust Umbrel.
+
+  - Plan for 1–2 GB of RAM per browser running at once.
+
+  - Live views use port 7438 (UDP, with TCP as the fallback) directly, over your
+  network or Tailscale. Addresses are read when the app starts: if you install
+  Tailscale later, restart BrowserPier.
+
+  - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
+  without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
+releaseNotes: >-
+  The first release. See the changelog at
+  https://github.com/Oni-giri/browser-pier/blob/main/CHANGELOG.md
+developer: Oni-giri
+website: https://github.com/Oni-giri/browser-pier
+dependencies: []
+repo: https://github.com/Oni-giri/browser-pier
+support: https://github.com/Oni-giri/browser-pier/issues
+port: 7436
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+deterministicPassword: true
+submitter: Yakitori
+submission: ""

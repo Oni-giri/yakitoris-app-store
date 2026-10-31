@@ -1,0 +1,48 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-browserpier_web_1
+      APP_PORT: 7437
+      # Agents, and phones opening handoff links, can't sign in to Umbrel.
+      # BrowserPier checks their tokens, PIN and single-use links itself.
+      PROXY_AUTH_WHITELIST: "/api/*,/cdp/*,/mcp,/mcp/*,/h/*,/static/*"
+
+  web:
+    # Pinned to the release, with BROWSERPIER_BROWSER_IMAGE below to match
+    # (RELEASING.md, step 6).
+    image: ghcr.io/oni-giri/browser-pier:0.1.0@sha256:c0e9c63d57875ef9da85c77927e336e2f1ef4b754c1c5a25248c045519f8560e
+    restart: on-failure
+    # Time to stop every browser gracefully on the way out (each gets 30s,
+    # all at once).
+    stop_grace_period: 1m
+    # Umbrel's user, who owns app data; browsers run as it too. BrowserPier
+    # makes ./data private to it (0700) at start.
+    user: "1000:1000"
+    # The Docker socket's group, read on the host by exports.sh.
+    group_add:
+      - "${APP_YAKITORI_BROWSERPIER_DOCKER_GID:-999}"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+      # BrowserPier starts each browser as a container, only from its own
+      # browser image. See "Good to know" in umbrel-app.yml.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # The browser image of the same release, pinned likewise.
+      BROWSERPIER_BROWSER_IMAGE: ghcr.io/oni-giri/browser-pier-chromium:0.1.0@sha256:de36ddc40c9c6ad3e2ec534c0022eb11e0fdb58fcea4ebf708047b9fd80f112e
+      # The app password shown under Info.
+      BROWSERPIER_ADMIN_PASSWORD: ${APP_PASSWORD}
+      # Umbrel's proxy (in umbreld, umbrelOS 2.0) reaches BrowserPier from
+      # the app network's gateway: only its X-Forwarded-* are believed, not
+      # other apps' on that network.
+      BROWSERPIER_TRUSTED_PROXIES: ${APP_YAKITORI_BROWSERPIER_PROXY_IP:-}
+      # Stopping the app in Umbrel stops its browsers too, each recorded as
+      # a clean stop. hooks/post-stop catches any left over.
+      BROWSERPIER_STOP_BROWSERS_ON_EXIT: "true"
+      # This Umbrel's LAN and Tailscale addresses, for live viewers.
+      BROWSERPIER_WEBRTC_IPS: ${APP_YAKITORI_BROWSERPIER_WEBRTC_IPS:-}
+    ports:
+      # Live views (WebRTC) don't go through Umbrel's proxy.
+      - "7438:7438/udp"
+      - "7438:7438/tcp"
