@@ -12,7 +12,7 @@ services:
   web:
     # Pinned to the release, with BROWSERPIER_BROWSER_IMAGE below to match
     # (RELEASING.md, step 6).
-    image: ghcr.io/oni-giri/browser-pier:0.1.0@sha256:c0e9c63d57875ef9da85c77927e336e2f1ef4b754c1c5a25248c045519f8560e
+    image: ghcr.io/oni-giri/browser-pier:0.1.1@sha256:50ef081a9e454c33c262bc8b8b0cf047ad8676ea3d4d1d65c738795e15eb318f
     restart: on-failure
     # Time to stop every browser gracefully on the way out (each gets 30s,
     # all at once).
@@ -30,7 +30,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       # The browser image of the same release, pinned likewise.
-      BROWSERPIER_BROWSER_IMAGE: ghcr.io/oni-giri/browser-pier-chromium:0.1.0@sha256:de36ddc40c9c6ad3e2ec534c0022eb11e0fdb58fcea4ebf708047b9fd80f112e
+      BROWSERPIER_BROWSER_IMAGE: ghcr.io/oni-giri/browser-pier-chromium:0.1.1@sha256:eb34acfa488b601f88fb37cbf60450a954043dbc02310da12623b8c01eb7481d
       # The app password shown under Info.
       BROWSERPIER_ADMIN_PASSWORD: ${APP_PASSWORD}
       # Umbrel's proxy (in umbreld, umbrelOS 2.0) reaches BrowserPier from

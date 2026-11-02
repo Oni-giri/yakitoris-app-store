@@ -6,9 +6,9 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.1.0"
+version: "0.1.1"
 tagline: Persistent browsers your AI agents can borrow
-icon: https://raw.githubusercontent.com/Oni-giri/browser-pier/main/internal/ui/static/icon.svg
+icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
   BrowserPier keeps one real Chromium per profile on your Umbrel. Log in to a
   site once; your agents (Claude Code, Playwright scripts, anything that speaks
@@ -40,8 +40,9 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  The first release. See the changelog at
-  https://github.com/Oni-giri/browser-pier/blob/main/CHANGELOG.md
+  Fixes signing in, and unlocking a handoff with its PIN, over plain HTTP:
+  through umbrel.local, a LAN address or Tailscale, the page showed
+  "cross-origin request detected".
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
