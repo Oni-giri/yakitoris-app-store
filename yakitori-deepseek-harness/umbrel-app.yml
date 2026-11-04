@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-deepseek-harness
 category: ai
 name: DeepSeek Harness
-version: "0.2.1-rc.5-3"
+version: "0.2.1-rc.5-4"
 tagline: DeepSeek's open-source agent harness, in your browser
 icon: https://github.com/deepseek-ai.png
 description: >-
@@ -23,17 +23,14 @@ description: >-
   before relying on it.
 
 
-  This package builds a small image on your Umbrel from the official npm release
-  and the standard Node.js image, so installing takes a few minutes.
+  This package uses a prebuilt image made from the official npm release and the
+  standard Node.js image.
 releaseNotes: >-
-  Fixes the previous release failing to start: Umbrel could not find the files
-  it needs to build the app's image.
-
-
-  DeepSeek Harness is now installed into the app's image while Umbrel installs
-  the app, instead of being downloaded on first start, so the app opens right
-  away. The old download in the app's data folder is removed automatically;
-  settings, your API key and sessions are kept.
+  The app now uses a prebuilt image instead of building one on your Umbrel, so
+  installs and updates are faster and no longer fail to start. DeepSeek Harness
+  is included in the image rather than downloaded on first start; the old
+  download in the app's data folder is removed automatically. Settings, your API
+  key and sessions are kept.
 developer: DeepSeek AI
 website: https://deepseek-harness.github.io/deepseek-harness/
 dependencies: []

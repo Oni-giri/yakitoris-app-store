@@ -9,13 +9,11 @@ services:
       APP_HOST: yakitori-deepseek-harness_web_1
       APP_PORT: 8080
 
-  # Built on the Umbrel from image/ (umbrelOS runs `docker compose up --build`).
-  # The image is the stock Node image plus the pinned @deepseek-ai/dsh release
-  # and the launcher; nothing is downloaded when the app starts.
-  # The context must be absolute: umbrelOS passes its own common compose file
-  # first, and Compose resolves relative paths against that file's directory.
+  # Built and published by https://github.com/Oni-giri/deepseek-harness-umbrel:
+  # the stock Node image plus the pinned @deepseek-ai/dsh release and the
+  # launcher; nothing is downloaded when the app starts.
   web:
-    build: ${APP_DATA_DIR}/image
+    image: ghcr.io/oni-giri/deepseek-harness:0.2.1-rc.5@sha256:c70ad61102cd264cfe0e8ea55aefc4c68399603c7bad09b4eb8c4b0fddfe4662
     user: "1000:1000"
     restart: on-failure
     init: true
