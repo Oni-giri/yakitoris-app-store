@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve APP_DATA_DIR from this script's location (hooks/ sits in $APP_DATA_DIR).
+APP_DATA_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+
+# Docker creates missing bind-mount sources as root:root, which the non-root
+# RustFS container (run as 1000:1000 in docker-compose.yml) cannot write to.
+# MySQL's entrypoint chowns its own dir, so creating it is enough. Idempotent.
+mkdir -p \
+    "${APP_DATA_DIR}/data/mysql" \
+    "${APP_DATA_DIR}/data/rustfs" \
+    "${APP_DATA_DIR}/data/rustfs-logs"
+chown 1000:1000 "${APP_DATA_DIR}/data/rustfs" "${APP_DATA_DIR}/data/rustfs-logs"

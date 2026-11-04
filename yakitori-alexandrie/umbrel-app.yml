@@ -1,0 +1,46 @@
+manifestVersion: 1
+id: yakitori-alexandrie
+category: productivity
+name: Alexandrie
+version: "8.14.3"
+tagline: Markdown knowledge base for your notes, docs, and team wikis
+icon: https://raw.githubusercontent.com/Smaug6739/Alexandrie/v8.14.3/frontend/public/Logo/Alexandrie-logo-dark.png
+description: >-
+  Alexandrie is an open-source knowledge base built around an extended Markdown
+  editor. Organize notes into workspaces, categories, and nested documents,
+  find anything with full-text search and the Ctrl+K command center, and keep
+  working offline thanks to its installable PWA.
+
+
+  The editor supports LaTeX, custom containers, interactive checkboxes,
+  diagrams, reusable snippets, and dictation. Workspaces include Kanban boards,
+  and teams get fine-grained permissions (read, write, admin, owner) per
+  document. Uploaded images, PDFs, audio, and video are previewed in the app,
+  and full ZIP export/import makes backups easy.
+
+
+  This package runs the official Alexandrie frontend and API with a MySQL
+  database and a RustFS object store for your uploads, all behind a single
+  nginx front so it works on one Umbrel port. Everything stays on your Umbrel.
+
+
+  Note: shared "public" document links are only reachable by people who can
+  log in to your Umbrel, and may render empty on first load because the server
+  side of the page cannot reach the API through the browser-relative URL used
+  here. Read documents from the dashboard instead.
+releaseNotes: >-
+  Initial packaging of Alexandrie 8.14.3 for Umbrel. On first launch, open the
+  app and sign up. The first account becomes the instance owner. Password-reset
+  emails are not configured.
+developer: Smaug6739
+website: https://alexandrie-hub.fr
+dependencies: []
+repo: https://github.com/Smaug6739/Alexandrie
+support: https://github.com/Smaug6739/Alexandrie/issues
+port: 8205
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""
