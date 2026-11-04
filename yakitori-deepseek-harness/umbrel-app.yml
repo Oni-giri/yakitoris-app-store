@@ -1,0 +1,42 @@
+manifestVersion: 1
+id: yakitori-deepseek-harness
+category: ai
+name: DeepSeek Harness
+version: "0.2.1-rc.5"
+tagline: DeepSeek's open-source agent harness, in your browser
+icon: https://github.com/deepseek-ai.png
+description: >-
+  DeepSeek Harness (dsh) is the open-source agent harness from DeepSeek AI. Chat
+  with DeepSeek models in the browser, keep your session history on your Umbrel,
+  and let the agent work with files, run shell commands, search the web and use
+  MCP servers and plugins.
+
+
+  After installing, open the app, go to Settings → Models and add your DeepSeek
+  API key (or another supported provider). The key is stored only on your Umbrel.
+
+
+  The agent can execute model-generated commands. It runs inside this app's
+  container and works in the app's own workspace folder, but it still has network
+  access and can read or change anything in that folder. DeepSeek Harness is a
+  developer preview that has not been security audited; review its safety notice
+  before relying on it.
+
+
+  This package runs the official npm release on the standard Node.js image. The
+  first start downloads DeepSeek Harness and can take a few minutes.
+releaseNotes: >-
+  Initial packaging of DeepSeek Harness 0.2.1-rc.5 for Umbrel. Sign-in is handled
+  by your Umbrel login; usage telemetry is disabled.
+developer: DeepSeek AI
+website: https://deepseek-harness.github.io/deepseek-harness/
+dependencies: []
+repo: https://github.com/deepseek-ai/deepseek-harness
+support: https://github.com/deepseek-ai/deepseek-harness/discussions
+port: 8734
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""

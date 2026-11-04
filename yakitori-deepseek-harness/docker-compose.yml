@@ -1,0 +1,37 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      # The launcher's proxy (see launcher/launcher.mjs) is the entry point. It
+      # forwards to dsh on loopback inside the container and hands over dsh's
+      # per-process launch token, so Umbrel's login is the access control.
+      APP_HOST: yakitori-deepseek-harness_web_1
+      APP_PORT: 8080
+
+  # DeepSeek Harness runs from the official npm package on the stock Node image:
+  # no custom image. The launcher installs the pinned DSH_VERSION into
+  # ${APP_DATA_DIR}/data/runtime on first start (and again when it changes).
+  web:
+    image: node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+    user: "1000:1000"
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    working_dir: /data
+    command: ["node", "/launcher/launcher.mjs"]
+    environment:
+      DSH_VERSION: "0.2.1-rc.5"
+      DATA_DIR: /data
+      # Settings, the DeepSeek API key (.credentials.yaml) and session history.
+      DSH_HOME: /data/home
+      HOME: /data/home
+      # The agent's working directory: files it reads and writes live here.
+      DSH_WORKSPACE: /data/workspace
+      LISTEN_PORT: "8080"
+      DSH_PORT: "3081"
+      # Don't send usage telemetry from this server.
+      DSH_TELEMETRY_MODE: DISABLED
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+      - ${APP_DATA_DIR}/launcher:/launcher:ro
