@@ -12,8 +12,10 @@ services:
   # Built on the Umbrel from image/ (umbrelOS runs `docker compose up --build`).
   # The image is the stock Node image plus the pinned @deepseek-ai/dsh release
   # and the launcher; nothing is downloaded when the app starts.
+  # The context must be absolute: umbrelOS passes its own common compose file
+  # first, and Compose resolves relative paths against that file's directory.
   web:
-    build: ./image
+    build: ${APP_DATA_DIR}/image
     user: "1000:1000"
     restart: on-failure
     init: true
