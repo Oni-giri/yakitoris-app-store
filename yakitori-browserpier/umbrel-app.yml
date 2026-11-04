@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.1.2"
+version: "0.1.3"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,10 +40,10 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Browsers now start on umbrelOS 2.0: Chromium aborted at startup because
-  Docker's default AppArmor profile on Debian 13 refuses its sandbox. A
-  browser that fails to start now says why. On a phone, the header fits on
-  one row with the menu below it, and no page scrolls sideways.
+  Pages load faster: the stylesheet and scripts are no longer fetched again
+  on every page, which Umbrel's proxy made slow. Memory estimates count what
+  your other apps use, and a profile's own page has Export and Delete in its
+  menu.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
