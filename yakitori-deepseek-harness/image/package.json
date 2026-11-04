@@ -1,0 +1,13 @@
+{
+  "name": "umbrel-deepseek-harness",
+  "private": true,
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.5"
+  },
+  "allowScripts": {
+    "@deepseek-ai/dsh-subprocess-local": true,
+    "koffi": true,
+    "node-pty": true,
+    "protobufjs": true
+  }
+}
