@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.1.1"
+version: "0.1.2"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,9 +40,10 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Fixes signing in, and unlocking a handoff with its PIN, over plain HTTP:
-  through umbrel.local, a LAN address or Tailscale, the page showed
-  "cross-origin request detected".
+  Browsers now start on umbrelOS 2.0: Chromium aborted at startup because
+  Docker's default AppArmor profile on Debian 13 refuses its sandbox. A
+  browser that fails to start now says why. On a phone, the header fits on
+  one row with the menu below it, and no page scrolls sideways.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
