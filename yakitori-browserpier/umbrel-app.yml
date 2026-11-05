@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.1.3"
+version: "0.1.4"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,10 +40,9 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Pages load faster: the stylesheet and scripts are no longer fetched again
-  on every page, which Umbrel's proxy made slow. Memory estimates count what
-  your other apps use, and a profile's own page has Export and Delete in its
-  menu.
+  A new look: a sky-blue page, and orange only while a profile needs you.
+  Profiles show their site's icon, read from the browser's own icon cache
+  after it stops, or an icon and colour you pick.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
