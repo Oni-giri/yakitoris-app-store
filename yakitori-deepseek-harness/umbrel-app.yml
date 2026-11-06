@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-deepseek-harness
 category: ai
 name: DeepSeek Harness
-version: "0.2.1-rc.5-6"
+version: "0.2.1-rc.5-7"
 tagline: DeepSeek's open-source agent harness, in your browser
 icon: https://github.com/deepseek-ai.png
 description: >-
@@ -26,10 +26,11 @@ description: >-
   This package uses a prebuilt image made from the official npm release and the
   standard Node.js image.
 releaseNotes: >-
-  The agent can now install tools without root: npm install -g, pnpm add -g and
-  pip install go to its home folder on the app's data and survive updates. The
-  image also adds git, curl, ripgrep, Python, a C/C++ toolchain, and pnpm and
-  yarn through corepack.
+  Any installer that works without root now works for the agent too: tools set
+  up with rustup, nvm, bun, deno, sdkman, pyenv and similar are found in the
+  agent's commands, not only in the terminal. The agent's home folder is also
+  its system home, so ssh keys for git and rustup settings are kept in the app's
+  data.
 developer: DeepSeek AI
 website: https://deepseek-harness.github.io/deepseek-harness/
 dependencies: []
