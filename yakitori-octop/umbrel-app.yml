@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-octop
 category: ai
 name: Octop
-version: "1.0.2b6"
+version: "1.0.3b3"
 tagline: Self-hosted, multi-user, multi-agent AI assistant
 icon: https://raw.githubusercontent.com/TencentCloud/Octop/main/dashboard/public/pwa-512.png
 description: >-
@@ -27,9 +27,8 @@ description: >-
   info panel, then change it from the avatar menu. Octop has its own login,
   so Umbrel's app login is not added in front of it.
 releaseNotes: >-
-  Initial packaging of Octop 1.0.2b6 (multi-arch: amd64 and arm64). Data is
-  persisted under the app data directory. The first admin password is derived
-  from your Umbrel's app seed.
+  Updates Octop to 1.0.3b3 (beta, built for amd64 and arm64). See what changed
+  in Octop's release notes: https://github.com/TencentCloud/Octop/releases
 developer: Tencent Cloud
 website: https://octop.cloud
 dependencies: []

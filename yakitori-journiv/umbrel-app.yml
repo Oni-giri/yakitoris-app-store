@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-journiv
 category: productivity
 name: Journiv
-version: "0.1.0-beta.23"
+version: "0.1.0-beta.26"
 tagline: Self-hosted private journal with mood tracking, prompts, and media
 icon: https://github.com/journiv.png
 description: >-
@@ -25,11 +25,9 @@ description: >-
   Heads up: Journiv is currently beta software and under active development. Keep
   regular backups (Journiv's built-in import/export is enabled here).
 releaseNotes: >-
-  Initial packaging of Journiv 0.1.0-beta.23 for Umbrel. On first launch, open
-  the app and sign up to create your account — Journiv has no preconfigured admin
-  user. The bundled stack (Journiv app + Celery worker + Celery beat + Valkey)
-  stores all data under the app's data directory in a SQLite database; Journiv
-  itself is in beta, so back up regularly.
+  Updates Journiv to 0.1.0-beta.26 and its Valkey cache to 9.1. Your journal is
+  migrated automatically on first start. See what changed in Journiv's release
+  notes: https://github.com/journiv/journiv-app/releases
 developer: SwalabTech
 website: https://journiv.com
 dependencies: []

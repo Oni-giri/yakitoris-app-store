@@ -14,8 +14,8 @@ services:
   # cron. The dashboard calls the API on the same origin, so no CORS config is
   # needed when browsing via umbrel.local, the LAN IP or a Tailscale address.
   octop:
-    # Pinned to 1.0.2b6: the 1.0.x stable tags are only built for amd64.
-    image: ghcr.io/tencentcloud/octop:1.0.2b6@sha256:80d3a75ffafef1108b520b6b28e7c802c0ece3c6edbf5f26edae9f7d14b18909
+    # A beta tag: the 1.0.x stable tags are only built for amd64.
+    image: ghcr.io/tencentcloud/octop:1.0.3b3@sha256:e340c2d976f67316149053eb43d078b6bdb95b9afb5dc8666b7b24b7e5b6a221
     restart: on-failure
     stop_grace_period: 1m
     environment:

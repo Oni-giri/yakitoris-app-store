@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-komga
 category: media
 name: Komga
-version: "1.25.0"
+version: "1.30.0"
 tagline: Self-hosted media server for comics, manga, and ebooks
 icon: https://raw.githubusercontent.com/gotson/komga/master/.github/readme-images/app-icon.png
 description: >-
@@ -22,12 +22,8 @@ description: >-
   Supports CBZ/CBR/CB7, PDF, and EPUB, with duplicate-page detection,
   side-by-side metadata editing, and a REST API for automation.
 releaseNotes: >-
-  Initial packaging of Komga 1.25.0 for Umbrel. On first launch, open the app
-  — since no account exists yet, Komga shows a "claim" screen where you set
-  the admin email and password yourself. From there, add a library pointing
-  at a folder under /data and Komga will scan and organize it. Your Umbrel
-  Documents and Downloads folders are mounted read-only at /data/documents
-  and /data/downloads.
+  Updates Komga to 1.30.0. See what changed in Komga's release notes:
+  https://github.com/gotson/komga/releases
 developer: gotson
 website: https://komga.org
 dependencies: []

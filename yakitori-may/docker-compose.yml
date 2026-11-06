@@ -7,7 +7,7 @@ services:
       APP_PORT: 5050
 
   web:
-    image: ghcr.io/dannymcc/may:0.23.0@sha256:46ee7df453fb1e3cd5992919440ee4086971966a438113ca5522cb2921dd4504
+    image: ghcr.io/dannymcc/may:0.44.2@sha256:f556f956e822a845fca07066b97ee0d00f78dc67d02f1cfdbdf411f0635e53b7
     restart: on-failure
     stop_grace_period: 1m
     environment:

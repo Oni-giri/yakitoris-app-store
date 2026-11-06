@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-alexandrie
 category: productivity
 name: Alexandrie
-version: "8.14.3"
+version: "8.14.3-1"
 tagline: Markdown knowledge base for your notes, docs, and team wikis
 icon: https://raw.githubusercontent.com/Smaug6739/Alexandrie/v8.14.3/frontend/public/Logo/Alexandrie-logo-dark.png
 description: >-
@@ -29,9 +29,10 @@ description: >-
   side of the page cannot reach the API through the browser-relative URL used
   here. Read documents from the dashboard instead.
 releaseNotes: >-
-  Initial packaging of Alexandrie 8.14.3 for Umbrel. On first launch, open the
-  app and sign up. The first account becomes the instance owner. Password-reset
-  emails are not configured.
+  Moves the database to MySQL 8.4, the current long-term release (8.0 no longer
+  gets security fixes), and the built-in proxy to nginx 1.30. MySQL upgrades
+  your existing database automatically on first start, which can take a minute;
+  back up important notes before updating.
 developer: Smaug6739
 website: https://alexandrie-hub.fr
 dependencies: []
