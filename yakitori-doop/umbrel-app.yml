@@ -1,0 +1,49 @@
+manifestVersion: 2
+storage:
+  dataRoot: data
+id: yakitori-doop
+category: productivity
+name: Doop
+version: "0.14.0"
+tagline: Multiplayer design canvas for people and AI agents
+icon: https://github.com/kgoedecke.png
+description: >-
+  Doop is a collaborative design canvas where people and AI agents sketch,
+  review and iterate together in real time. It includes an MCP server for
+  connecting external agents, comments, live cursors and persistent canvases.
+
+
+  Create an account after opening the app. Email verification and password
+  reset emails are printed in the app logs unless you configure SMTP; for a
+  private home server, use a unique password and keep the app behind Umbrel's
+  login and trusted network.
+
+
+  Set APP_YAKITORI_DOOP_URL in docker-compose.yml to the exact public URL
+  where users open Doop, including scheme and port. This is required for
+  OAuth integrations and agent connections that depend on absolute redirect
+  URLs. The default supports local access at http://umbrel.local only.
+
+
+  The built-in AI design team is optional. Add provider credentials to enable
+  it; users can also connect their own model accounts or agents. External AI
+  providers may receive canvas content.
+
+
+  Doop runs a database and web server with persistent app storage. It includes
+  user-supplied integrations and agent tools; install it only on an Umbrel you
+  trust and keep it updated.
+releaseNotes: >-
+  Initial Umbrel packaging of Doop 0.14.0 with persistent PostgreSQL storage.
+developer: Kai Goedecke
+website: https://doop.design
+repo: https://github.com/kgoedecke/doop
+support: https://github.com/kgoedecke/doop/issues
+dependencies: []
+port: 4400
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""

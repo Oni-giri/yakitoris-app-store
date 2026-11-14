@@ -1,0 +1,50 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-doop_web_1
+      APP_PORT: 4400
+      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/.well-known/*,/api/auth/*"
+
+  web:
+    image: ghcr.io/oni-giri/doop-umbrel:0.14.0
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+      - ${APP_DATA_DIR}/secrets:/run/secrets:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        export BETTER_AUTH_SECRET="$$(cat /run/secrets/auth-secret)"
+        export DATABASE_URL="postgres://doop:$$(cat /run/secrets/db-password)@db:5432/doop"
+        export SECRETS_ENCRYPTION_KEYS="umbrel:$$(cat /run/secrets/encryption-key)"
+        exec node_modules/.bin/tsx server/index.ts
+    environment:
+      NODE_ENV: production
+      PORT: "4400"
+      BETTER_AUTH_URL: ${APP_YAKITORI_DOOP_URL:-http://umbrel.local}
+      TRUSTED_ORIGINS: ${APP_YAKITORI_DOOP_URL:-http://umbrel.local}
+      CHROME_PATH: /usr/bin/chromium
+      CHROME_NO_SANDBOX: "1"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - ${APP_DATA_DIR}/secrets:/run/secrets:ro
+      - ${APP_DATA_DIR}/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: doop
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_DB: doop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doop -d doop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

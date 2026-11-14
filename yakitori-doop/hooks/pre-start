@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+APP_DATA_DIR="${APP_DATA_DIR:-$(readlink -f "$(dirname "$0")/..")}"
+
+mkdir -p "${APP_DATA_DIR}/secrets"
+chmod 755 "${APP_DATA_DIR}/secrets"
+
+write_secret() {
+  name="$1"
+  bytes="$2"
+  file="${APP_DATA_DIR}/secrets/${name}"
+  if [ ! -s "$file" ]; then
+    umask 077
+    if [ "$name" = encryption-key ]; then
+      openssl rand -base64 "$bytes" | tr -d '\n' > "$file"
+    else
+      openssl rand -hex "$bytes" > "$file"
+    fi
+  fi
+  chmod 644 "$file"
+}
+
+write_secret auth-secret 32
+write_secret db-password 32
+write_secret encryption-key 32
