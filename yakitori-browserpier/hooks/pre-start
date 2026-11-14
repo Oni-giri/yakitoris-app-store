@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Before every start of the app, after a reboot too: loads BrowserPier's
+# AppArmor profile (../apparmor/browserpier) into the kernel. On umbrelOS 2.0
+# (Debian 13, AppArmor 4) Docker's own profile refuses Chromium's sandbox with
+# Docker 29.1 and earlier, so browsers run under this one instead:
+# docker-default plus user namespaces. It isn't installed in
+# /etc/apparmor.d: loaded here at each start, it can't outlive the app's
+# own copy.
+#
+# Umbrel ignores a hook's exit status. If loading fails, BrowserPier finds
+# the profile missing and runs browsers under Docker's profile if the sandbox
+# works there, otherwise without AppArmor, and its log says so.
+set -euo pipefail
+
+app="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..")"
+"${app}/apparmor/load"
