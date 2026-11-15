@@ -6,7 +6,7 @@ category: productivity
 name: Doop
 version: "0.14.0"
 tagline: Multiplayer design canvas for people and AI agents
-icon: https://github.com/kgoedecke.png
+icon: https://raw.githubusercontent.com/kgoedecke/doop/v0.14.0/desktop/app-icon.png
 description: >-
   Doop is a collaborative design canvas where people and AI agents sketch,
   review and iterate together in real time. It includes an MCP server for
