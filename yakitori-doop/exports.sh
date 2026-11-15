@@ -1,52 +1,56 @@
 #!/usr/bin/env bash
 # Umbrel sources this before the app's compose runs.
 #
-# Doop builds its public origin from BETTER_AUTH_URL and rejects sign-in and
-# API requests whose Origin is not in TRUSTED_ORIGINS. A fixed hostname breaks
-# every other way of opening the app, so derive the origin from where the user
-# actually launched it. Umbrel provides:
+# Doop builds its public origin from BETTER_AUTH_URL and only accepts requests
+# whose Origin is in TRUSTED_ORIGINS. Umbrel has no variable for the remote
+# (Tailscale or custom domain) hostname, so a fixed origin breaks every access
+# path except the one it names. Instead:
 #
-#   DEVICE_DOMAIN_NAME  device .local domain (e.g. umbrel.local)
-#   APP_DOMAIN          app domain used for remote access, when enabled
-#   APP_PROXY_PORT      manifest port
-#   APP_HIDDEN_SERVICE  Tor hidden service, when enabled
+#   APP_DOOP_URL      canonical origin, used for redirect and OAuth URLs
+#   APP_DOOP_URL_ALT  every origin users can legitimately open the app from
 #
-# Users may open the app over http:// or https://, on the device domain, the
-# remote domain, or any device hostname, so trust each of those narrow origins
-# explicitly rather than disabling the CSRF check.
+# better-auth accepts wildcard patterns in trusted origins, so the .local
+# domain, the remote domain and raw IP addresses are covered without knowing
+# the hostname ahead of time. The list stays scoped to the Umbrel device
+# instead of trusting every origin.
 
 set -u
 
 PORT="${APP_PROXY_PORT:-4400}"
 LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"
-APP_DOMAIN="${APP_DOMAIN:-}"
 APP_HIDDEN_SERVICE="${APP_HIDDEN_SERVICE:-}"
 
-# Primary origin: what Doop advertises in redirect and OAuth URLs. Prefer the
-# remote domain, because that is the canonical URL when remote access is on.
-if [ -n "${APP_DOMAIN}" ]; then
-  export APP_DOOP_URL="https://${APP_DOMAIN}"
+# Canonical origin. Remote access, when on, is the URL the user actually
+# opens, so advertise it; otherwise use the local launch origin.
+if [ -n "${APP_HIDDEN_SERVICE}" ] && [ "${APP_HIDDEN_SERVICE}" != "not-enabled.onion" ] &&
+  [ "${APP_HIDDEN_SERVICE}" != "notyetset.onion" ]; then
+  export APP_DOOP_URL="http://${APP_HIDDEN_SERVICE}"
 else
   export APP_DOOP_URL="http://${LOCAL_DOMAIN}:${PORT}"
 fi
 
-# Additional origins users can legitimately open the app from.
-CANDIDATES="http://${LOCAL_DOMAIN}:${PORT} https://${LOCAL_DOMAIN}:${PORT}"
-if [ -n "${APP_DOMAIN}" ]; then
-  CANDIDATES="${CANDIDATES} http://${APP_DOMAIN} https://${APP_DOMAIN}"
-fi
-if [ -n "${APP_HIDDEN_SERVICE}" ]; then
-  CANDIDATES="${CANDIDATES} http://${APP_HIDDEN_SERVICE}"
-fi
-
-# De-duplicate, drop the primary, and join with commas for Doop's list parser.
+# Origins users can open the app from. Wildcards cover the remote hostname
+# (for example <device>.<tailnet>.ts.net) and the .local domain over both
+# schemes and the manifest port.
 ALT=""
-for origin in ${CANDIDATES}; do
-  [ "${origin}" = "${APP_DOOP_URL}" ] && continue
+add() {
   case ",${ALT}," in
-  *",${origin},"*) ;;
-  *) ALT="${ALT:+${ALT},}${origin}" ;;
+  *",$1,"*) ;;
+  *) ALT="${ALT:+${ALT},}$1" ;;
   esac
-done
+}
+add "http://${LOCAL_DOMAIN}:${PORT}"
+add "https://${LOCAL_DOMAIN}:${PORT}"
+add "http://${LOCAL_DOMAIN}"
+add "https://${LOCAL_DOMAIN}"
+add "*://*.ts.net:*"
+add "*://*.ts.net"
+add "*://${LOCAL_DOMAIN%%.*}.*:${PORT}"
+add "*://${LOCAL_DOMAIN%%.*}.*"
+if [ -n "${APP_HIDDEN_SERVICE}" ] && [ "${APP_HIDDEN_SERVICE}" != "not-enabled.onion" ] &&
+  [ "${APP_HIDDEN_SERVICE}" != "notyetset.onion" ]; then
+  add "http://${APP_HIDDEN_SERVICE}"
+fi
 
+ALT="${ALT#,}"
 export APP_DOOP_URL_ALT="${ALT}"

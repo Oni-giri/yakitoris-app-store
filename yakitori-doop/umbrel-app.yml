@@ -4,7 +4,7 @@ storage:
 id: yakitori-doop
 category: productivity
 name: Doop
-version: "0.14.1"
+version: "0.14.2"
 tagline: Multiplayer design canvas for people and AI agents
 icon: https://raw.githubusercontent.com/kgoedecke/doop/v0.14.0/desktop/app-icon.png
 description: >-
@@ -35,8 +35,9 @@ description: >-
   user-supplied integrations and agent tools; install it only on an Umbrel you
   trust and keep it updated.
 releaseNotes: >-
-  Trust the origin you actually opened the app from, so sign-in works over
-  Tailscale and remote access instead of only http://umbrel.local.
+  Sign-in works over Tailscale, a custom domain and Tor, not just
+  http://umbrel.local. Trusted origins now cover the device's own domains
+  instead of a single hardcoded hostname.
 developer: Kai Goedecke
 website: https://doop.design
 repo: https://github.com/kgoedecke/doop
