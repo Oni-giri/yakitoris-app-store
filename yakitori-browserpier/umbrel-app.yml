@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.2.0"
+version: "0.2.1"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,13 +40,11 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Agents get page tools in API mode (snapshot, find, act, wait_for,
-  navigate, tabs) and page_content (Markdown, reader view, screenshot or
-  PDF), so they can read and use pages without screenshots. Browsers on
-  umbrelOS 2 keep an AppArmor profile again: BrowserPier loads its own each
-  time the app starts. Pages see a real desktop with a taskbar. Browsers
-  started by the previous version are closed gracefully on the first start,
-  with their logins kept.
+  BrowserPier's own AppArmor profile now really loads on Umbrel (0.2.0's
+  update left out the files it needed). Copy buttons work over plain HTTP,
+  the token's included. Page text containing "<!--" no longer hides the rest
+  of what agents read, and agents are told when an iframe, such as a consent
+  banner, covers what they want to click.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
