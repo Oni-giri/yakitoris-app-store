@@ -19,10 +19,11 @@ description: >-
   login and trusted network.
 
 
-  Set APP_YAKITORI_DOOP_URL in docker-compose.yml to the exact public URL
-  where users open Doop, including scheme and port. This is required for
-  OAuth integrations and agent connections that depend on absolute redirect
-  URLs. The default supports local access at http://umbrel.local only.
+  Sign-in uses the URL you opened the app from. Local access, remote access
+  (Tailscale or a custom domain) and Tor are trusted automatically, so OAuth
+  integrations and agent connections that depend on absolute redirect URLs work
+  without extra configuration. To pin a different canonical URL, override
+  BETTER_AUTH_URL in docker-compose.yml.
 
 
   The built-in AI design team is optional. Add provider credentials to enable

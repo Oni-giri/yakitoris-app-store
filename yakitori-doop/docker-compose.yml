@@ -28,8 +28,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4400"
-      BETTER_AUTH_URL: ${APP_YAKITORI_DOOP_URL:-http://umbrel.local}
-      TRUSTED_ORIGINS: ${APP_YAKITORI_DOOP_URL:-http://umbrel.local}
+      BETTER_AUTH_URL: ${APP_DOOP_URL}
+      TRUSTED_ORIGINS: ${APP_DOOP_URL},${APP_DOOP_URL_ALT}
       CHROME_PATH: /usr/bin/chromium
       CHROME_NO_SANDBOX: "1"
 
