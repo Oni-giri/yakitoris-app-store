@@ -8,8 +8,6 @@ services:
       # The ARTEX browser extension posts capture to /api/traffic/ingest with
       # ARTEX's own Bearer JWT; it can't carry Umbrel's login cookie.
       PROXY_AUTH_WHITELIST: "/api/traffic/ingest"
-      # ARTEX streams activity over SSE: the proxy must not buffer it.
-      PROXY_TRUST_PROXY: "1"
 
   postgres:
     image: postgres:16-alpine
