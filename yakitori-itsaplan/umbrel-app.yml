@@ -30,10 +30,11 @@ description: >-
   Plan's own tokens or signatures.
 
 
-  Public issue, document, and view links remain behind Umbrel's login. To share
-  them with people who do not have Umbrel accounts, disable "Require Umbrel
-  login" in this app's settings; It's a Plan still protects private pages with
-  its own accounts and permissions.
+  Public issue, document, and view HTML pages remain behind Umbrel's login.
+  Their share-token API and media endpoints remain public as upstream intends.
+  To let people open shared pages without an Umbrel account, disable "Require
+  Umbrel login" in this app's settings; It's a Plan still protects private
+  pages and API operations with its own accounts and permissions.
 releaseNotes: >-
   Initial Umbrel package for It's a Plan Community 1.12.0, including persistent
   storage, automatic pre-migration database backups, generated per-device

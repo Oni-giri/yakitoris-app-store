@@ -212,7 +212,8 @@ services:
       HOSTNAME: 0.0.0.0
       # Absolute same-origin API URL. A relative value breaks the MCP setup
       # page (new URL(MCP_URL)) and produces unusable external client configs.
-      # Keep this equal to the API's configured public URL plus /api.
+      # Keep this equal to the API service's configured API_URL; that value
+      # already includes the external /api prefix.
       API_URL: ${APP_ITSAPLAN_API_URL}
       # Server-side media and calendar proxying still uses the internal API.
       SERVICE_URL_API: http://yakitori-itsaplan_api_1:3000
