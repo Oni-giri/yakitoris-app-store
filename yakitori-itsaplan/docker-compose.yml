@@ -1,0 +1,226 @@
+# It's a Plan Community 1.12.0, adapted from
+# https://github.com/croffasia/itsaplan/blob/v1.12.0/docker-compose.yml
+#
+# Umbrel-specific changes:
+#   1. nginx merges the web app and API into one HTTPS-capable origin.
+#   2. Web and API use one canonical absolute HTTPS origin. Relative browser
+#      URLs would break the app's MCP setup page and copied client configs.
+#   3. Postgres, RustFS, and migration backups persist under APP_DATA_DIR/data.
+#   4. Independent secrets are derived from the device seed in exports.sh.
+#   5. All images are pinned to version tags and multi-architecture digests.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-itsaplan_router_1
+      APP_PORT: 80
+      # The app has its own authentication for REST, MCP, SCIM, and Git
+      # webhooks. Those non-browser clients cannot complete Umbrel's login.
+      PROXY_AUTH_WHITELIST: "/api,/api/*,/.well-known/oauth-authorization-server*,/.well-known/oauth-protected-resource*,/.well-known/openid-configuration*"
+      # Agent streams and MCP sessions can stay open for a long time.
+      # Umbrel passes this value to Node's proxyTimeout, in milliseconds.
+      PROXY_TIMEOUT: 3600000
+
+  # Single-origin entry point. See default.conf.template.
+  router:
+    image: nginx:1.30-alpine@sha256:3bc3836dc0be3b811f238210360bf8e7ca8a2d0effdae46160bf1f3578710051
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    volumes:
+      - ${APP_DATA_DIR}/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: itsaplan
+      POSTGRES_PASSWORD: ${APP_ITSAPLAN_POSTGRES_PASSWORD}
+      POSTGRES_DB: itsaplan
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itsaplan -d itsaplan"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # S3-compatible storage for issue attachments. The service remains private
+  # to the app; the API streams attachment bytes to the web service.
+  minio:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    restart: on-failure
+    stop_grace_period: 1m
+    # Keep upstream's runtime user for this release. RustFS 1.0.0's existing
+    # /logs directory is owned by UID 10001 and is not writable by arbitrary
+    # UIDs; forcing 1000:1000 can prevent startup. Only /data is host-mounted.
+    user: "0:0"
+    environment:
+      RUSTFS_ACCESS_KEY: itsaplan
+      RUSTFS_SECRET_KEY: ${APP_ITSAPLAN_S3_SECRET}
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_LOG_LEVEL: error
+    volumes:
+      - ${APP_DATA_DIR}/data/rustfs:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Idempotently creates the attachment bucket, then exits.
+  minio-init:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY_ID: itsaplan
+      S3_SECRET_ACCESS_KEY: ${APP_ITSAPLAN_S3_SECRET}
+      S3_BUCKET: planner-attachments
+    entrypoint: >
+      /bin/sh -c "
+      curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3
+      --user \"$$S3_ACCESS_KEY_ID:$$S3_SECRET_ACCESS_KEY\"
+      http://yakitori-itsaplan_minio_1:9000/\"$$S3_BUCKET\" &&
+      echo 'bucket ready: '\"$$S3_BUCKET\"
+      "
+
+  # Backs up the database and applies migrations before application services
+  # start. The backup directory is persistent and dumps are retained for 30 days.
+  migrate:
+    image: ghcr.io/croffasia/itsaplan-api:1.12.0@sha256:b46a6c56396b3e57eda3a56eb625da310e1ff55a65fce9abd6f36ae6d2479113
+    restart: "no"
+    command: ["bun", "run", "packages/db/src/migrate.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://itsaplan:${APP_ITSAPLAN_POSTGRES_PASSWORD}@yakitori-itsaplan_postgres_1:5432/itsaplan
+      BACKUP_RETENTION_DAYS: "30"
+    volumes:
+      - ${APP_DATA_DIR}/data/db-backups:/backups
+
+  api:
+    image: ghcr.io/croffasia/itsaplan-api:1.12.0@sha256:b46a6c56396b3e57eda3a56eb625da310e1ff55a65fce9abd6f36ae6d2479113
+    restart: on-failure
+    init: true
+    stop_grace_period: 1m
+    # The migrate service has already run migrations.
+    command: ["bun", "run", "apps/api/src/index.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      API_PORT: 3000
+      DATABASE_URL: postgres://itsaplan:${APP_ITSAPLAN_POSTGRES_PASSWORD}@yakitori-itsaplan_postgres_1:5432/itsaplan
+      BETTER_AUTH_SECRET: ${APP_ITSAPLAN_AUTH_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ITSAPLAN_ENCRYPTION_KEY}
+
+      # Canonical URLs are used for links, OAuth issuer metadata, and host-only
+      # secure cookies. Browser traffic itself uses the same-origin /api route.
+      API_URL: ${APP_ITSAPLAN_API_URL}
+      APP_URL: ${APP_ITSAPLAN_PUBLIC_ORIGIN}
+      COOKIE_DOMAIN: ""
+
+      # Both nginx and Umbrel's gateway append to X-Forwarded-For. The API
+      # skips those Docker proxy addresses when finding the real client.
+      TRUSTED_PROXIES: ${NETWORK_IP}/16
+
+      S3_ENDPOINT: http://yakitori-itsaplan_minio_1:9000
+      S3_BUCKET: planner-attachments
+      S3_ACCESS_KEY_ID: itsaplan
+      S3_SECRET_ACCESS_KEY: ${APP_ITSAPLAN_S3_SECRET}
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Webhooks, imports, notifications, and agent schedules.
+  worker:
+    image: ghcr.io/croffasia/itsaplan-worker:1.12.0@sha256:5ae5d1123f3dc9f366b1516d110a043f9caa60fcb043a54abc9f99ab0be3d200
+    restart: on-failure
+    init: true
+    stop_grace_period: 1m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://itsaplan:${APP_ITSAPLAN_POSTGRES_PASSWORD}@yakitori-itsaplan_postgres_1:5432/itsaplan
+      APP_ENCRYPTION_KEY: ${APP_ITSAPLAN_ENCRYPTION_KEY}
+      TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      S3_ENDPOINT: http://yakitori-itsaplan_minio_1:9000
+      S3_BUCKET: planner-attachments
+      S3_ACCESS_KEY_ID: itsaplan
+      S3_SECRET_ACCESS_KEY: ${APP_ITSAPLAN_S3_SECRET}
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+
+  # Telegram long polling must remain a single replica.
+  bot:
+    image: ghcr.io/croffasia/itsaplan-bot:1.12.0@sha256:a3f5a1518a5194ccbd37ca014b2fd00e6c76a120582d4feec554829fa883d70a
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://itsaplan:${APP_ITSAPLAN_POSTGRES_PASSWORD}@yakitori-itsaplan_postgres_1:5432/itsaplan
+      APP_ENCRYPTION_KEY: ${APP_ITSAPLAN_ENCRYPTION_KEY}
+
+  web:
+    image: ghcr.io/croffasia/itsaplan-web:1.12.0@sha256:95d4a9253608a00e2e6b82c68f92dd7e24bbf86bca537d66b8868c3a12926e24
+    restart: on-failure
+    init: true
+    stop_grace_period: 1m
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+      # Absolute same-origin API URL. A relative value breaks the MCP setup
+      # page (new URL(MCP_URL)) and produces unusable external client configs.
+      # Keep this equal to the API's configured public URL plus /api.
+      API_URL: ${APP_ITSAPLAN_API_URL}
+      # Server-side media and calendar proxying still uses the internal API.
+      SERVICE_URL_API: http://yakitori-itsaplan_api_1:3000
+      PRIVACY_URL: ""
+      TERMS_URL: ""
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/login"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

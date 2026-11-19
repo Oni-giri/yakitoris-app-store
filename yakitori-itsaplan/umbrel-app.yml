@@ -1,0 +1,54 @@
+manifestVersion: 2.0
+id: yakitori-itsaplan
+storage:
+  dataRoot: data
+category: files
+name: It's a Plan
+version: "1.12.0"
+tagline: Self-hosted issue tracking for teams and AI agents
+icon: https://raw.githubusercontent.com/croffasia/itsaplan/v1.12.0/apps/web/public/icon-512.png
+description: >-
+  It's a Plan is an open-source, self-hosted issue tracker where people and AI
+  agents work side by side. It includes boards, tables, timelines, calendars,
+  docs, dashboards, custom fields, project permissions, imports, REST and MCP
+  APIs, webhooks, and integrations with five Git forges.
+
+
+  This Community package includes the web app, API, background worker, Telegram
+  bot, PostgreSQL, and RustFS attachment storage behind one nginx origin. The
+  first account you register becomes the instance administrator. AI providers,
+  email, single sign-on, and Telegram are configured later in the web interface.
+  Anonymous usage telemetry is disabled in this package.
+
+
+  umbrelOS 2.0 or newer is required. Open through Umbrel's HTTPS launch button
+  and keep using that canonical .local hostname: authentication links, passkeys,
+  OAuth metadata, and generated MCP client configurations are bound to it.
+  Plain HTTP and alternate hostnames are not supported by this package yet.
+  External MCP clients use `https://<device>.local:8743/api/mcp`. REST, MCP,
+  SCIM, and repository webhook routes bypass Umbrel's login and use It's a
+  Plan's own tokens or signatures.
+
+
+  Public issue, document, and view links remain behind Umbrel's login. To share
+  them with people who do not have Umbrel accounts, disable "Require Umbrel
+  login" in this app's settings; It's a Plan still protects private pages with
+  its own accounts and permissions.
+releaseNotes: >-
+  Initial Umbrel package for It's a Plan Community 1.12.0, including persistent
+  storage, automatic pre-migration database backups, generated per-device
+  secrets, and single-origin API routing.
+developer: croffasia
+website: https://itsaplan.dev
+dependencies: []
+repo: https://github.com/croffasia/itsaplan
+support: https://github.com/croffasia/itsaplan/issues
+port: 8743
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/croffasia/itsaplan/v1.12.0/assets/screenshots/board-app-dark.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store
