@@ -1,0 +1,34 @@
+manifestVersion: 1
+id: yakitori-artex
+storage:
+  dataRoot: data
+category: developer
+name: ARTEX
+version: "0.6.0"
+tagline: Autonomous LLM-driven penetration testing platform
+icon: https://raw.githubusercontent.com/BaaRai/ARTEX/main/web/public/logo.svg
+description: >-
+  ARTEX is a self-hosted, multi-agent penetration testing platform with dual
+  exploration/asset graphs, a recording MITM proxy, and human-in-the-loop
+  approval gates.
+
+
+  First-run setup: after installing, right-click the ARTEX icon on your Umbrel
+  home screen → Troubleshoot, copy the "Setup token" line from the server logs,
+  and paste it on the /setup screen to set your admin password.
+
+
+  Use only against systems you own or have explicit authorization to test.
+releaseNotes: ""
+developer: BaaRai (upstream Autumn-27)
+website: https://github.com/BaaRai/ARTEX
+dependencies: []
+repo: https://github.com/BaaRai/ARTEX
+support: https://github.com/BaaRai/ARTEX/issues
+port: 8787
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Community
+submission: ""

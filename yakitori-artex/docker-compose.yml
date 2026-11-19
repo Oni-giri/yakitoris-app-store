@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: secstore-artex_server_1
+      APP_PORT: 8787
+      PROXY_AUTH_WHITELIST: "/api/traffic/ingest"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: on-failure
+    environment:
+      POSTGRES_USER: artex
+      POSTGRES_PASSWORD: ${APP_ARTEX_DB_PASSWORD}
+      POSTGRES_DB: artex
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artex -d artex"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    image: ghcr.io/oni-giri/artex:latest
+    restart: on-failure
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ARTEX_PG_DSN: postgres://artex:${APP_ARTEX_DB_PASSWORD}@secstore-artex_postgres_1:5432/artex?sslmode=disable
+      ARTEX_JWT_KEY_DIR: /app/keys
+      ARTEX_SECRET_KEY: ${APP_ARTEX_SECRET_KEY}
+      ARTEX_TRUSTED_PROXIES: ${NETWORK_IP}/16
+      ARTEX_NOISE_PROFILE: quiet
+    volumes:
+      - ${APP_DATA_DIR}/data/artex:/app/data
+      - ${APP_DATA_DIR}/data/keys:/app/keys
