@@ -25,7 +25,9 @@ services:
       retries: 10
 
   server:
-    image: ghcr.io/oni-giri/artex:latest
+    # Pinned release image built by Oni-giri/ARTEX (.github/workflows/ghcr.yml).
+    # Bump the tag and digest together when a new image is published.
+    image: ghcr.io/oni-giri/artex:v0.6.0-umbrel.1@sha256:ed456cbe4df025da0fa5550c026e0155f5907171cb02e316a54753172a91e0f1
     restart: on-failure
     # ARTEX reloads its scanner tooling and agent processes; give it time.
     stop_grace_period: 1m

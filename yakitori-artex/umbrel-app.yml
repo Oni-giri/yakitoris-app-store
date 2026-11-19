@@ -4,22 +4,47 @@ storage:
   dataRoot: data
 category: developer
 name: ARTEX
-version: "0.6.0"
-tagline: Autonomous LLM-driven penetration testing platform
+version: "0.6.0-umbrel.1"
+tagline: Autonomous LLM-driven penetration testing with evidence-bound findings
 icon: https://raw.githubusercontent.com/BaaRai/ARTEX/main/web/public/logo.svg
 description: >-
-  ARTEX is a self-hosted, multi-agent penetration testing platform with dual
-  exploration/asset graphs, a recording MITM proxy, and human-in-the-loop
-  approval gates.
+  ARTEX is a self-hosted, multi-agent penetration testing platform. A planner
+  splits a goal into intents, workers run real tools (nmap, nuclei, httpx,
+  katana, ffuf, dalfox, sqlmap, bbot, a Chromium browser), and every finding is
+  tied to the assets and captured HTTP traffic that prove it. It ships a
+  recording MITM proxy, human-in-the-loop approval gates, scope/deny rules and
+  token budgets.
 
 
-  First-run setup: after installing, right-click the ARTEX icon on your Umbrel
-  home screen → Troubleshoot, copy the "Setup token" line from the server logs,
-  and paste it on the /setup screen to set your admin password.
+  Use only against systems you own or are explicitly authorized to test.
 
 
-  Use only against systems you own or have explicit authorization to test.
-releaseNotes: ""
+  First run: open the app, then right-click the ARTEX icon on the Umbrel home
+  screen, choose Troubleshoot and copy the "Setup token" line from the logs.
+  Paste it on the /setup screen and choose an admin password (12+ characters).
+
+
+  Then add a model under System → LLM: an Anthropic/OpenAI-compatible endpoint
+  with your own key, or a local Ollama server on the same Umbrel. Exploration
+  does nothing until a working LLM profile exists.
+
+
+  Good to know:
+
+  - The image is large (about 2 GB compressed) and unpacks to roughly 6 GB: it
+  bundles the full scanner toolchain, Node, Python, bbot and Chromium.
+
+  - Plan for 4 GB of RAM or more. Workers, browsers and parallel intents are
+  memory-hungry; a Raspberry Pi 4 will struggle.
+
+  - Ports 8787 (web UI and API, behind Umbrel's proxy) and the internal capture
+  proxy on 8788 are used; 8788 is not published to the LAN.
+
+  - Generated traffic evidence, task archives and transcripts live under the app
+  data folder. The key that decrypts stored secrets is in /app/keys, so back up
+  both together.
+releaseNotes: >-
+  First Umbrel build of ARTEX 0.6.0.
 developer: BaaRai (upstream Autumn-27)
 website: https://github.com/BaaRai/ARTEX
 dependencies: []
@@ -30,5 +55,5 @@ gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
-submitter: Community
+submitter: Yakitori
 submission: ""
