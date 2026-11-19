@@ -40,7 +40,7 @@ services:
       ARTEX_SECRET_KEY: ${APP_ARTEX_SECRET_KEY}
       # Umbrel's proxy reaches the app from the app network's gateway, so the
       # login rate limiter must read X-Forwarded-For from that subnet.
-      ARTEX_TRUSTED_PROXIES: ${NETWORK_IP}/16
+      ARTEX_TRUSTED_PROXIES: ${APP_YAKITORI_ARTEX_TRUSTED_PROXIES}
       ARTEX_NOISE_PROFILE: quiet
     volumes:
       - ${APP_DATA_DIR}/data/artex:/app/data
