@@ -1,0 +1,65 @@
+version: "3.7"
+
+# Nogon packaged for Umbrel.
+#
+# Adapted from the upstream Docker guide at
+# https://github.com/asciimoo/nogon/blob/v0.22.0/webui/website/src/content/docs/docker.md
+#
+# Umbrel-specific changes:
+#
+#   1. ANY HOSTNAME. Nogon only accepts web-UI search (/search websocket) and
+#      MCP requests whose Origin matches server.base_url. Umbrel apps are
+#      reached as umbrel.local, the LAN IP, a Tailscale IP or MagicDNS name,
+#      so a small nginx front (nginx/default.conf.template) rewrites Origin to
+#      base_url, but only for genuinely same-origin requests (Origin equal to
+#      the Host the browser reached us on). Cross-site origins pass through
+#      unchanged and Nogon keeps rejecting them.
+#
+#   2. AUTH. Nogon's access token is Umbrel's per-app password (shown on the
+#      app's page because of deterministicPassword). The browser extension and
+#      MCP clients cannot carry Umbrel's login cookie, so their API paths skip
+#      Umbrel's login and authenticate with that token instead.
+#
+#   3. STORAGE. The index, SQLite database and secret key live in a bind mount
+#      under ${APP_DATA_DIR}; the container runs as 1000:1000 to own it.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-nogon_web_1
+      APP_PORT: 80
+      # Browser extension and MCP endpoints. Every one of them still requires
+      # Nogon's access token; /api/config only reports public UI settings.
+      PROXY_AUTH_WHITELIST: "/api/add,/api/add_pdf,/api/delete,/api/document,/api/history,/api/rules,/api/profile,/api/config,/api/label,/mcp"
+
+  # ---- Origin-normalising front ---------------------------------------------
+  web:
+    image: nginx:1.30-alpine@sha256:e9b2d7624fd7957f4ed44ae0a272d93fb73aeb8512ba8916f8118ae6143fd115
+    restart: on-failure
+    stop_grace_period: 1m
+    depends_on:
+      - server
+    environment:
+      # Substituted into the template by the nginx image's entrypoint. Must be
+      # identical to NOGON__SERVER__BASE_URL below.
+      PUBLIC_ORIGIN: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
+    volumes:
+      - ${APP_DATA_DIR}/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+
+  # ---- Nogon (:4433) ---------------------------------------------------------
+  server:
+    image: ghcr.io/asciimoo/nogon:v0.22.0@sha256:d1b427c7f876e64e6212e000df60d33c2e418b60372582b56cfee719eafd4107
+    restart: on-failure
+    stop_grace_period: 1m
+    init: true
+    user: "1000:1000"
+    working_dir: /nogon/data
+    environment:
+      NOGON_DATA_DIR: /nogon/data
+      NOGON__SERVER__ADDRESS: 0.0.0.0:4433
+      # Used for links Nogon generates (RSS, file previews in MCP replies).
+      # Browsing and search work on any hostname thanks to the nginx front.
+      NOGON__SERVER__BASE_URL: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
+      NOGON__APP__ACCESS_TOKEN: ${APP_PASSWORD}
+    volumes:
+      - ${APP_DATA_DIR}/data/nogon:/nogon/data

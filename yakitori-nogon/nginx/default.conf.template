@@ -1,0 +1,59 @@
+# Nogon front for Umbrel.
+#
+# Nogon checks the Origin header of web-UI search and MCP requests against
+# server.base_url (hostname, port and scheme). Umbrel users reach the app on
+# several hostnames (umbrel.local, LAN IP, Tailscale IP / MagicDNS, HTTPS via
+# Tailscale Serve), so a same-origin request from any of them gets its Origin
+# replaced with ${PUBLIC_ORIGIN} (= base_url).
+#
+# "Same-origin" means the Origin's host:port equals the Host, or the
+# X-Forwarded-Host, the browser actually reached us on (Umbrel's app_proxy
+# may rewrite one of them). Anything else, i.e. a cross-site page, keeps its
+# real Origin and is rejected by Nogon exactly as before. Requests without an
+# Origin (CLI, MCP clients) stay without one.
+#
+# ${PUBLIC_ORIGIN} is filled in by the nginx image's envsubst step at startup.
+# nginx's own $variables are left alone because they are not set in the
+# environment.
+
+map "$http_origin $http_host $http_x_forwarded_host" $nogon_origin {
+    "~^https?://(?<oh>[^\s/]+) \k<oh> "        "${PUBLIC_ORIGIN}";
+    "~^https?://(?<oh>[^\s/]+) \S+ \k<oh>$"    "${PUBLIC_ORIGIN}";
+    default                                     $http_origin;
+}
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # Some pages and PDFs sent by the extension exceed nginx's 1 MB default.
+    client_max_body_size 100m;
+
+    # Resolve per request so nginx starts before Nogon is up and follows it
+    # across restarts (all Umbrel apps share one Docker network, hence the
+    # unique container name).
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $nogon yakitori-nogon_server_1:4433;
+
+    location / {
+        proxy_set_header Host $http_host;
+        proxy_set_header Origin $nogon_origin;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # /search is a websocket.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 300s;
+        proxy_request_buffering off;
+        proxy_pass http://$nogon;
+    }
+}
