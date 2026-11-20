@@ -1,0 +1,56 @@
+name: Update Doop
+
+on:
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out app store
+        uses: actions/checkout@v4
+      - name: Find latest upstream server release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          ref="$(gh api repos/kgoedecke/doop/tags --paginate --jq '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          printf 'ref=%s\nversion=%s\n' "$ref" "${ref#v}" >> "$GITHUB_OUTPUT"
+      - name: Update Doop pins
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          REF: ${{ steps.release.outputs.ref }}
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          version = os.environ["VERSION"]
+          ref = os.environ["REF"]
+          for name in ("yakitori-doop/docker-compose.yml", "yakitori-doop/umbrel-app.yml"):
+              path = Path(name)
+              text = path.read_text()
+              text = re.sub(r"ghcr.io/oni-giri/doop-umbrel:\S+", f"ghcr.io/oni-giri/doop-umbrel:{version}", text)
+              text = re.sub(r'version: "[0-9]+\\.[0-9]+\\.[0-9]+"', f'version: "{version}"', text)
+              text = re.sub(r"https://raw.githubusercontent.com/kgoedecke/doop/v[0-9]+\\.[0-9]+\\.[0-9]+/", f"https://raw.githubusercontent.com/kgoedecke/doop/{ref}/", text)
+              path.write_text(text)
+          PY
+      - name: Commit updated pins
+        run: |
+          set -eu
+          git config user.name yakitori
+          git config user.email 89288375+Oni-giri@users.noreply.github.com
+          git add yakitori-doop
+          if git diff --cached --quiet; then
+            echo "Doop is already current"
+          else
+            git commit -m "yakitori-doop: update to upstream ${{ steps.release.outputs.version }}"
+            git push
+          fi

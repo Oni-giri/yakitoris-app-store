@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/.well-known/*,/api/auth/*"
 
   web:
-    image: ghcr.io/oni-giri/doop-umbrel:0.14.0
+    image: ghcr.io/oni-giri/doop-umbrel:0.15.0
     restart: unless-stopped
     init: true
     stop_grace_period: 30s
