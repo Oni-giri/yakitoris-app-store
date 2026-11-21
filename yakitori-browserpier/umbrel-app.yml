@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.3.0"
+version: "0.4.0"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,13 +40,13 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Agents now move and type at a hand's pace by default, and act tells them
-  what changed on the page, what it downloaded, and where a Cloudflare
-  checkbox is. Agents can upload files over MCP, target buttons by role or
-  text, and ask a handoff to end by itself once you reach a page. Logins
-  kept only for the browsing session now survive a stop, and the tabs come
-  back. New profiles block ads and trackers. Browsers started by 0.2.x are
-  closed gracefully on the first start, logins kept.
+  Copy and paste now work in the live view: Ctrl/Cmd+C and V act inside the
+  browser, and a new Clipboard button moves text between your computer and
+  the browser. The browser's clipboard is emptied when you hand back, so the
+  agent can't paste what you copied. The status pill no longer covers the
+  browser's tabs, and the live view has a full-screen mode, on the handoff
+  page too. Browsers started by 0.3.x are closed gracefully on the first
+  start, logins kept.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
