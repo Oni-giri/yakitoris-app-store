@@ -13,7 +13,7 @@ services:
   # the stock Node image plus the pinned @deepseek-ai/dsh release and the
   # launcher; nothing is downloaded when the app starts.
   web:
-    image: ghcr.io/oni-giri/deepseek-harness:0.2.2-rc.1@sha256:1ff70bcd045b3354e1febafc0962b24b616a4f87938ae5be21039e9401d27cd6
+    image: ghcr.io/oni-giri/deepseek-harness:0.2.2-rc.5@sha256:d84737069b92453ffece9f56c4b100ec304ea95251fae9455f82fb2d4b85f006
     user: "1000:1000"
     restart: on-failure
     init: true
