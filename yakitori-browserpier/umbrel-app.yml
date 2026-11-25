@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.4.0"
+version: "0.5.0"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -40,12 +40,12 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Copy and paste now work in the live view: Ctrl/Cmd+C and V act inside the
-  browser, and a new Clipboard button moves text between your computer and
-  the browser. The browser's clipboard is emptied when you hand back, so the
-  agent can't paste what you copied. The status pill no longer covers the
-  browser's tabs, and the live view has a full-screen mode, on the handoff
-  page too. Browsers started by 0.3.x are closed gracefully on the first
+  Session recording: turn on Record sessions in a profile's settings to
+  replay what agents did in its browser, with gaps skipped and links from
+  the activity log. It is off by default, only you can turn it on, and a
+  person is never recorded: it stops when you take control or open a
+  handoff. Settings sets how long recordings are kept and how much space
+  they take. Browsers started by 0.4.x are closed gracefully on the first
   start, logins kept.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
