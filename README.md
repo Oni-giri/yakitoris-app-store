@@ -1,17 +1,31 @@
-## Umbrel Community App Store Template
+# Yakitori's Umbrel App Store
 
-This repository is a template to create an Umbrel Community App Store. These additional app stores allow developers to distribute applications without submitting to the [Official Umbrel App Store](https://github.com/getumbrel/umbrel-apps).
+Self-hosted apps for people and AI agents on [umbrelOS](https://umbrel.com/).
 
-## How to use:
+## Add to Umbrel
 
-1. Start by clicking the "Use this template" button located above.
-2. Assign an ID and name to your app store within the `umbrel-app-store.yml` file. This file specifies two important attributes:
-    - `id` - Acts as a unique prefix for every app within your Community App Store. You must start your application's ID with your app store's ID. For instance, in this template, the app store ID is `sparkles`, and there's an app named `hello world`. Consequently, the app's ID should be: `sparkles-hello-world`.
-    - `name` - This is the name of the Community App Store displayed in the umbrelOS UI.
-3. Change the name of the `sparkles-hello-world` folder to match your app's ID. The app ID is for you to decide. For example, if your app store ID is `whistles`, and your app is named My Video Downloader, you could set its app ID to `whistles-my-video-downloader`, and rename the folder accordingly.
-4. Next, enter your app's listing details in the `whistles-my-video-downloader/umbrel-app.yml`. These are displayed in the umbrelOS UI.
-5. Include the necessary Docker services in `whistles-my-video-downloader/docker-compose.yml`.
-6. That's it! Your Community App Store, featuring your unique app, is now set up and ready to go. To use your Community App Store, you can add its GitHub url the umbrelOS user interface as shown in the following demo:
+1. Open the **App Store** on your Umbrel.
+2. Click the **`···`** menu in the top-right corner and choose **Community App Stores**.
+3. Paste this repository URL and click **Add**:
 
+```text
+https://github.com/Oni-giri/yakitoris-app-store
+```
 
-https://user-images.githubusercontent.com/10330103/197889452-e5cd7e96-3233-4a09-b475-94b754adc7a3.mp4
+## Included Apps
+
+| App | ID | Category | Port | Arch | Summary |
+| --- | --- | --- | --- | --- | --- |
+| [Anki Sync Hub](https://github.com/Oni-giri/anki-sync-hub) | `yakitori-anki-sync-hub` | Automation | `8723` | `amd64`, `arm64` | Private Anki sync service with a browser admin UI, REST API, and scoped MCP server |
+| [ARTEX](https://github.com/BaaRai/ARTEX) | `yakitori-artex` | Developer | `8787` | `amd64` | Autonomous multi-agent penetration testing platform with evidence-bound findings |
+| [BrowserPier](https://github.com/Oni-giri/browser-pier) | `yakitori-browserpier` | Developer | `7436` (`+7438` WebRTC) | `amd64`, `arm64` | Persistent Chromium browser profiles your AI agents can borrow via CDP, REST, or MCP |
+| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `yakitori-deepseek-harness` | AI | `8734` | `amd64`, `arm64` | DeepSeek's open-source agent harness in your browser with local workspace storage |
+| [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Productivity | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
+| [It's a Plan](https://github.com/croffasia/itsaplan) | `yakitori-itsaplan` | Files | `8743` (HTTPS) | `amd64`, `arm64` | Self-hosted issue tracker, docs, boards, and workflows for teams and AI agents |
+| [Nogon](https://github.com/asciimoo/nogon) | `yakitori-nogon` | Productivity | `4433` | `amd64`, `arm64` | Private full-text search engine for your browsing history and files with MCP support |
+| [Octop](https://github.com/TencentCloud/Octop) | `yakitori-octop` | AI | `8105` | `amd64`, `arm64` | Multi-user, multi-agent AI assistant with web dashboard, IM channels, RAG, and cron |
+
+## Notes
+
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-doop`, `yakitori-itsaplan`) require **umbrelOS 2.0 or newer**.
+- **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.
