@@ -43,6 +43,7 @@ services:
       # Substituted into the template by the nginx image's entrypoint. Must be
       # identical to NOGON__SERVER__BASE_URL below.
       PUBLIC_ORIGIN: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
+      PUBLIC_HOST: ${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
     volumes:
       - ${APP_DATA_DIR}/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
 

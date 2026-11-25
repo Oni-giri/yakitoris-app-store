@@ -22,6 +22,26 @@ map "$http_origin $http_host $http_x_forwarded_host" $nogon_origin {
     default                                     $http_origin;
 }
 
+# The address the browser used, for rewriting /api/config below. Prefer Host;
+# fall back to the first X-Forwarded-Host entry if app_proxy replaced Host with
+# a container name (those contain "_", which no real hostname does), and to
+# ${PUBLIC_HOST} if neither looks like a host[:port].
+map "$http_host|$http_x_forwarded_host" $client_host {
+    "~^(?<h>[A-Za-z0-9.-]+(:[0-9]+)?|\[[0-9A-Fa-f:.]+\](:[0-9]+)?)\|"   $h;
+    "~\|(?<h>[A-Za-z0-9.-]+(:[0-9]+)?|\[[0-9A-Fa-f:.]+\](:[0-9]+)?)(,|$)" $h;
+    default                                                            "${PUBLIC_HOST}";
+}
+
+# https only when a proxy in front (e.g. Tailscale Serve) says so.
+map $http_x_forwarded_proto $client_ws_scheme {
+    "~^https"   wss;
+    default     ws;
+}
+map $http_x_forwarded_proto $client_http_scheme {
+    "~^https"   https;
+    default     http;
+}
+
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
@@ -39,6 +59,25 @@ server {
     # unique container name).
     resolver 127.0.0.11 valid=30s ipv6=off;
     set $nogon yakitori-nogon_server_1:4433;
+
+    # The web UI takes its API and websocket addresses from /api/config
+    # (baseUrl, wsUrl, searchUrl), which Nogon fills from server.base_url,
+    # i.e. umbrel.local. Point them at the address this browser actually
+    # used, so search works over Tailscale or by IP where umbrel.local does
+    # not resolve.
+    location = /api/config {
+        proxy_set_header Host $http_host;
+        proxy_set_header Origin $nogon_origin;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Accept-Encoding "";
+
+        sub_filter_types application/json;
+        sub_filter_once off;
+        sub_filter "http://${PUBLIC_HOST}" "$client_http_scheme://$client_host";
+        sub_filter "ws://${PUBLIC_HOST}"   "$client_ws_scheme://$client_host";
+
+        proxy_pass http://$nogon;
+    }
 
     location / {
         proxy_set_header Host $http_host;
