@@ -140,5 +140,8 @@ services:
       # Browsing and search work on any hostname thanks to the nginx front.
       NOGON__SERVER__BASE_URL: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
       NOGON__APP__ACCESS_TOKEN: ${APP_PASSWORD}
+      # Upstream default sends any query with no hits to Google, which on a
+      # fresh, empty index looks like search is broken. Stay in Nogon.
+      NOGON__APP__REDIRECT_ON_NO_RESULTS: "false"
     volumes:
       - ${APP_DATA_DIR}/data/nogon:/nogon/data
