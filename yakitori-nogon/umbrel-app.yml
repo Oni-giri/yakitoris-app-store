@@ -2,7 +2,7 @@ manifestVersion: 1
 id: yakitori-nogon
 category: productivity
 name: Nogon
-version: "0.22.0-1"
+version: "0.22.0-2"
 tagline: Your own search engine for the pages you visit and the files you keep
 icon: https://raw.githubusercontent.com/asciimoo/nogon/v0.22.0/webui/website/static/logo.png
 description: >-
