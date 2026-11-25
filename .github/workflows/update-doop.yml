@@ -14,35 +14,122 @@ jobs:
     steps:
       - name: Check out app store
         uses: actions/checkout@v4
-      - name: Find latest upstream server release
+      - name: Find latest published Doop image
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
           ref="$(gh api repos/kgoedecke/doop/tags --paginate --jq '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
-          printf 'ref=%s\nversion=%s\n' "$ref" "${ref#v}" >> "$GITHUB_OUTPUT"
+          version="${ref#v}"
+          python3 - "$version" "$ref" <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import sys
+          import urllib.error
+          import urllib.request
+
+          version, ref = sys.argv[1], sys.argv[2]
+          repo = "oni-giri/doop-umbrel"
+          token_url = f"https://ghcr.io/token?scope=repository:{repo}:pull"
+          with urllib.request.urlopen(token_url, timeout=15) as r:
+              token = json.loads(r.read().decode())["token"]
+
+          accept = (
+              "application/vnd.oci.image.index.v1+json, "
+              "application/vnd.docker.distribution.manifest.list.v2+json, "
+              "application/vnd.oci.image.manifest.v1+json, "
+              "application/vnd.docker.distribution.manifest.v2+json"
+          )
+          req = urllib.request.Request(
+              f"https://ghcr.io/v2/{repo}/manifests/{version}",
+              headers={"Authorization": f"Bearer {token}", "Accept": accept},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  digest = r.headers["Docker-Content-Digest"]
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print(
+                      f"ghcr.io/{repo}:{version} is not published yet; skipping update",
+                      file=sys.stderr,
+                  )
+                  print("ready=false")
+                  sys.exit(0)
+              raise
+
+          print("ready=true")
+          print(f"ref={ref}")
+          print(f"version={version}")
+          print(f"digest={digest}")
+          PY
       - name: Update Doop pins
+        if: steps.release.outputs.ready == 'true'
         env:
           VERSION: ${{ steps.release.outputs.version }}
           REF: ${{ steps.release.outputs.ref }}
+          DIGEST: ${{ steps.release.outputs.digest }}
         run: |
           set -eu
           python3 - <<'PY'
           import os
           from pathlib import Path
           import re
+          import urllib.error
+          import urllib.request
+
           version = os.environ["VERSION"]
           ref = os.environ["REF"]
-          for name in ("yakitori-doop/docker-compose.yml", "yakitori-doop/umbrel-app.yml"):
-              path = Path(name)
-              text = path.read_text()
-              text = re.sub(r"ghcr.io/oni-giri/doop-umbrel:\S+", f"ghcr.io/oni-giri/doop-umbrel:{version}", text)
-              text = re.sub(r'version: "[0-9]+\\.[0-9]+\\.[0-9]+"', f'version: "{version}"', text)
-              text = re.sub(r"https://raw.githubusercontent.com/kgoedecke/doop/v[0-9]+\\.[0-9]+\\.[0-9]+/", f"https://raw.githubusercontent.com/kgoedecke/doop/{ref}/", text)
-              path.write_text(text)
+          digest = os.environ["DIGEST"]
+
+          compose_path = Path("yakitori-doop/docker-compose.yml")
+          compose_text = compose_path.read_text()
+          new_compose, n_img = re.subn(
+              r"ghcr\.io/oni-giri/doop-umbrel:\S+",
+              f"ghcr.io/oni-giri/doop-umbrel:{version}@{digest}",
+              compose_text,
+          )
+          if n_img != 1:
+              raise SystemExit(f"Expected 1 doop-umbrel image reference, matched {n_img}")
+          compose_path.write_text(new_compose)
+
+          app_path = Path("yakitori-doop/umbrel-app.yml")
+          app_text = app_path.read_text()
+          new_app, n_ver = re.subn(
+              r'version: "[0-9]+\.[0-9]+\.[0-9]+"',
+              f'version: "{version}"',
+              app_text,
+          )
+          if n_ver != 1:
+              raise SystemExit(f"Expected 1 version field in umbrel-app.yml, matched {n_ver}")
+
+          icon_url = f"https://raw.githubusercontent.com/kgoedecke/doop/{ref}/desktop/app-icon.png"
+          try:
+              req = urllib.request.Request(icon_url, method="HEAD", headers={"User-Agent": "yakitori-update-doop"})
+              with urllib.request.urlopen(req, timeout=15):
+                  icon_ok = True
+          except urllib.error.URLError:
+              icon_ok = False
+
+          if icon_ok:
+              new_app, n_icon = re.subn(
+                  r"https://raw\.githubusercontent\.com/kgoedecke/doop/v[0-9]+\.[0-9]+\.[0-9]+/",
+                  f"https://raw.githubusercontent.com/kgoedecke/doop/{ref}/",
+                  new_app,
+              )
+              if n_icon != 1:
+                  raise SystemExit(f"Expected 1 icon URL in umbrel-app.yml, matched {n_icon}")
+
+          if new_app != app_text:
+              new_app = re.sub(
+                  r"(?ms)^releaseNotes: >-\n(?:  .*\n?)+",
+                  f"releaseNotes: >-\n  Updates Doop to {version}. See what changed upstream:\n  https://github.com/kgoedecke/doop/releases/tag/{ref}\n",
+                  new_app,
+                  count=1,
+              )
+          app_path.write_text(new_app)
           PY
       - name: Commit updated pins
+        if: steps.release.outputs.ready == 'true'
         run: |
           set -eu
           git config user.name yakitori

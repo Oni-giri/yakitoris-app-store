@@ -8,7 +8,7 @@ services:
       PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/.well-known/*,/api/auth/*"
 
   web:
-    image: ghcr.io/oni-giri/doop-umbrel:0.15.0
+    image: ghcr.io/oni-giri/doop-umbrel:0.15.0@sha256:1d48835aa284a2ad59c733053dd039a2370df44f41800c4332e00dd55af821bd
     restart: unless-stopped
     init: true
     stop_grace_period: 30s
@@ -34,7 +34,7 @@ services:
       CHROME_NO_SANDBOX: "1"
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
     restart: unless-stopped
     volumes:
       - ${APP_DATA_DIR}/secrets:/run/secrets:ro

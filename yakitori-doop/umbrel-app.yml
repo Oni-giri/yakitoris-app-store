@@ -31,9 +31,10 @@ description: >-
   providers may receive canvas content.
 
 
-  Doop runs a database and web server with persistent app storage. It includes
-  user-supplied integrations and agent tools; install it only on an Umbrel you
-  trust and keep it updated.
+  Doop runs a database and web server with persistent app storage. This build
+  currently targets x86_64 (amd64) Umbrel systems. It includes user-supplied
+  integrations and agent tools; install it only on an Umbrel you trust and keep
+  it updated.
 releaseNotes: >-
   Sign-in works over Tailscale, a custom domain and Tor, not just
   http://umbrel.local. Trusted origins now cover the device's own domains
