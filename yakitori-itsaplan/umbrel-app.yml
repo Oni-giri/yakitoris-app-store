@@ -4,9 +4,9 @@ storage:
   dataRoot: data
 category: files
 name: It's a Plan
-version: "1.12.0"
+version: "1.13.0"
 tagline: Self-hosted issue tracking for teams and AI agents
-icon: https://raw.githubusercontent.com/croffasia/itsaplan/v1.12.0/apps/web/public/icon-512.png
+icon: https://raw.githubusercontent.com/croffasia/itsaplan/v1.13.0/apps/web/public/icon-512.png
 description: >-
   It's a Plan is an open-source, self-hosted issue tracker where people and AI
   agents work side by side. It includes boards, tables, timelines, calendars,
@@ -36,9 +36,11 @@ description: >-
   Umbrel login" in this app's settings; It's a Plan still protects private
   pages and API operations with its own accounts and permissions.
 releaseNotes: >-
-  Initial Umbrel package for It's a Plan Community 1.12.0, including persistent
-  storage, automatic pre-migration database backups, generated per-device
-  secrets, and single-origin API routing.
+  Updates It's a Plan Community to 1.13.0: two-way GitHub/GitLab/Gitea/Forgejo
+  issue sync on the board, redesigned Docs with a persistent page tree and
+  comment threads, unified AI chat and agent runs side panel, and stopping agent
+  runs from the UI, API, or MCP. Also inlines the router config and hardens the
+  trusted-proxy subnet fallback.
 developer: croffasia
 website: https://itsaplan.dev
 dependencies: []
@@ -47,7 +49,7 @@ support: https://github.com/croffasia/itsaplan/issues
 port: 8743
 requiresHttps: true
 gallery:
-  - https://raw.githubusercontent.com/croffasia/itsaplan/v1.12.0/assets/screenshots/board-app-dark.png
+  - https://raw.githubusercontent.com/croffasia/itsaplan/v1.13.0/assets/screenshots/board-app-dark.png
 path: ""
 defaultUsername: ""
 defaultPassword: ""
