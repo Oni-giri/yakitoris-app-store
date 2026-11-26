@@ -1,0 +1,130 @@
+manifestVersion: 2.0
+id: yakitori-mcpspan
+storage:
+  dataRoot: data
+category: developer
+name: mcpspan
+version: "0.16.0"
+tagline: Self-hosted analytics for your MCP servers' tools, clients, and failures
+icon: https://raw.githubusercontent.com/mcpspan/mcpspan/ab876835f9b17e467031910c7bc506a6a4527cd7/docs/logo.svg
+description: >-
+  mcpspan is open-source, self-hosted analytics for MCP servers. Add one line
+  to your server (or run it behind the mcpspan proxy without changing code) and
+  see every tool call, resource read, and prompt get, which client made it
+  (Claude, Claude Code, Cursor, VS Code, Codex, ChatGPT, and more), how fast it
+  answered, how large the answer was, and why it failed. Follow sessions step
+  by step, spot agents looping or getting lost after a failure, see how many
+  tokens your tool list costs and which tools are never called, compare
+  releases and client versions, and get alerts on Slack, Discord, or any
+  webhook. Parameter values never leave your server's process.
+
+
+  This package runs mcpspan's Core API and dashboard alongside TimescaleDB on
+  your Umbrel, with a per-device API key signing secret and database password,
+  and TimescaleDB telemetry turned off. Raw calls are kept for 90 days and
+  hourly summaries for two years.
+
+
+  🛠️ SET-UP INSTRUCTIONS
+
+
+  Open mcpspan and create your account; registration closes once it exists.
+  You get an API key for your first server, and Settings shows the line to add
+  to it in its language. SDKs are available for TypeScript, Python, Go, C#,
+  Java/Kotlin, Rust, Ruby, and PHP; any other MCP server can run behind
+  `npx mcpspan-proxy -- <your server command>`.
+
+
+  Point the SDK's endpoint at `http://<device>.local:6270`. MCP servers that
+  run as other apps on this Umbrel can use `http://yakitori-mcpspan_api_1:6271`
+  instead. To show a Tailscale `.ts.net` or other address in setup snippets and
+  badge links, set `MCPSPAN_INGEST_URL` in this app's settings.
+
+
+  🤖 ASK YOUR AGENT
+
+
+  mcpspan is an MCP server itself, at `http://<device>.local:6270/mcp`, and it
+  only reads. Create a read token in Settings → Read tokens and add it to your
+  agent as an `Authorization: Bearer` header, or let a client that supports
+  OAuth sign in; it opens the dashboard at `MCPSPAN_DASHBOARD_URL` to ask you.
+
+
+  ⚠️ GOOD TO KNOW
+
+
+  umbrelOS 2.0 or newer is required. The dashboard stays behind Umbrel's login.
+  Event ingest, read-token API reads, `/mcp`, enabled badges, and the OAuth
+  endpoints MCP clients call bypass it and are authenticated by mcpspan itself.
+  Account and key management are only reachable through the dashboard.
+
+
+  There is no email: to reset a forgotten password, run
+  `sudo docker exec yakitori-mcpspan_api_1 node scripts/reset-password.ts`
+  on your Umbrel, which prints a new one. Badges and sign-in from cloud
+  clients such as claude.ai only work if this app is reachable from the
+  internet over HTTPS.
+releaseNotes: >-
+  Initial Umbrel package of mcpspan 0.16.0 (amd64 and arm64), with the
+  dashboard, SDK ingest, MCP server, badges, and OAuth on one port, TimescaleDB
+  with telemetry off, and per-device secrets.
+developer: mcpspan
+website: https://mcpspan.com
+dependencies: []
+repo: https://github.com/mcpspan/mcpspan
+support: https://github.com/mcpspan/mcpspan/issues
+port: 6270
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/mcpspan/.github/a0a277441ff6fc7f62b5dcd9308e6e09d32d27d4/assets/screenshot-overview.png
+  - https://raw.githubusercontent.com/mcpspan/.github/a0a277441ff6fc7f62b5dcd9308e6e09d32d27d4/assets/screenshot-calls.png
+  - https://raw.githubusercontent.com/mcpspan/.github/a0a277441ff6fc7f62b5dcd9308e6e09d32d27d4/assets/screenshot-errors.png
+  - https://raw.githubusercontent.com/mcpspan/.github/a0a277441ff6fc7f62b5dcd9308e6e09d32d27d4/assets/screenshot-session.png
+  - https://raw.githubusercontent.com/mcpspan/.github/a0a277441ff6fc7f62b5dcd9308e6e09d32d27d4/assets/screenshot-call.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: MCPSPAN_INGEST_URL
+    services:
+      - dashboard
+    note: >-
+      Address your MCP servers send telemetry to, shown in setup snippets, the
+      /mcp address, and badge links. Leave unset for
+      http://<device>.local:6270, or set e.g. https://<node>.<tailnet>.ts.net:6270.
+  - name: MCPSPAN_DASHBOARD_URL
+    services:
+      - api
+    note: >-
+      Where MCP clients that sign in to /mcp with OAuth send you to allow them.
+      Leave unset for https://<device>.local:6270, or set your Tailscale URL.
+  - name: MCPSPAN_RETENTION_DAYS
+    default: "90"
+    services:
+      - api
+    note: >-
+      Days to keep raw calls, error messages, and sessions (minimum 8). Charts
+      over longer windows come from hourly summaries. Lowering it drops older
+      calls.
+  - name: MCPSPAN_ROLLUP_RETENTION_DAYS
+    default: "730"
+    services:
+      - api
+    note: >-
+      Days to keep the hourly summaries that long-range charts are drawn from
+      (minimum 8).
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    services:
+      - api
+    note: >-
+      Optional OTLP/HTTP endpoint (port 4318 on a Collector) to forward every
+      call to as a span and a duration histogram, for Grafana, Datadog,
+      Honeycomb, and the like. Off while unset.
+  - name: OTEL_EXPORTER_OTLP_HEADERS
+    services:
+      - api
+    note: >-
+      Optional headers for the OTLP endpoint, such as a vendor's API key, as
+      key=value,key=value.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store
