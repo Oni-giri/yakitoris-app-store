@@ -1,0 +1,127 @@
+# Aldine 1.25.0 collaborative LaTeX editor, adapted for umbrelOS 2.0+:
+#   1. Upstream's two containers: the app (API, real-time collaboration, web UI,
+#      git) and a sandboxed TeX Live compiler. The compiler keeps every upstream
+#      hardening setting: an internal-only network with no route to the
+#      internet, all Linux capabilities dropped, no-new-privileges, and bounded
+#      memory and PIDs. Only the app joins umbrel_main_network.
+#   2. The app reaches the compiler by its unique container name, not the bare
+#      service name "compiler", which another app's service on
+#      umbrel_main_network could also answer to.
+#   3. Both containers run as root and the compiler has no CAP_DAC_OVERRIDE, so
+#      it can only write where root owns the directory. Umbrel creates app data
+#      owned by uid 1000; a one-shot init service (reusing the app image) hands
+#      it to root before either service starts.
+#   4. Served over Umbrel's HTTPS proxy (requiresHttps: true) so copy buttons
+#      work, with ALDINE_PUBLIC_URL bound to the HTTPS launch origin
+#      (exports.sh) for the absolute PDF and deep links the MCP server hands out.
+#   5. Accounts are off (upstream's single-tenant default) and Umbrel's login
+#      guards the editor. Only /mcp and Aldine's OAuth discovery, registration,
+#      token, and revoke endpoints bypass it; Aldine checks a bearer token on
+#      every one of them. The static MCP token is the per-device app password.
+#   6. Projects (one git repository each) and the PDF cache persist under
+#      APP_DATA_DIR/data/data; accounts, sessions, comments, generated signing
+#      secrets, and the SQLite database under APP_DATA_DIR/data/secrets.
+#   7. Pinned to the upstream multi-arch (amd64 + arm64) release tags and digests.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-aldine_app_1
+      APP_PORT: 3000
+      # MCP clients (Claude Code, Claude Desktop, ChatGPT, ...) cannot complete
+      # Umbrel's login page. Aldine authenticates every request here itself:
+      # /mcp needs the static token (or, with AUTH_ENABLED=1, an aldn_ token or
+      # OAuth grant); the OAuth endpoints answer 404 while accounts are off.
+      # The browser-facing /oauth/authorize consent page stays behind Umbrel's
+      # login. Each exact path is listed with its /* wildcard so a bare probe
+      # does not 302 to app-auth.
+      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/oauth/token,/oauth/register,/oauth/revoke"
+      # Keep collaborative-editing WebSockets and long typesets open across
+      # Umbrel's proxy (milliseconds).
+      PROXY_TIMEOUT: 3600000
+
+  # One-shot root init: Umbrel creates APP_DATA_DIR/data owned by uid 1000.
+  # Reuses the app image, so there is nothing extra to download.
+  init:
+    image: ghcr.io/trahloff/aldine-app:1.25.0@sha256:aca20f52815c544233b7c670a5b724b7c4e19175a826e81d5e2bcde3a1cda0f8
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - find /data /secrets -xdev \( ! -user 0 -o ! -group 0 \) -exec chown -h 0:0 {} +
+    restart: on-failure
+    volumes:
+      - ${APP_DATA_DIR}/data/data:/data
+      - ${APP_DATA_DIR}/data/secrets:/secrets
+
+  app:
+    image: ghcr.io/trahloff/aldine-app:1.25.0@sha256:aca20f52815c544233b7c670a5b724b7c4e19175a826e81d5e2bcde3a1cda0f8
+    restart: on-failure
+    # Lets open documents flush to git on the way out.
+    stop_grace_period: 30s
+    # Reaps orphaned git children (node would otherwise run as PID 1).
+    init: true
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      compiler:
+        condition: service_healthy
+    environment:
+      DATA_DIR: /data
+      META_DIR: /secrets
+      COMPILER_URL: http://yakitori-aldine_compiler_1:4020
+      ALDINE_PUBLIC_URL: ${APP_YAKITORI_ALDINE_PUBLIC_URL}
+      # Built-in MCP server for AI assistants. With accounts off, the static
+      # token is the credential: the app password shown under Info.
+      ALDINE_MCP: "1"
+      ALDINE_MCP_TOKEN: ${APP_PASSWORD}
+    volumes:
+      - ${APP_DATA_DIR}/data/data:/data
+      - ${APP_DATA_DIR}/data/secrets:/secrets
+    networks:
+      # umbrel_main_network: Umbrel's proxy, plus outbound access for Zotero,
+      # git hosts, literature search, and publisher template kits.
+      - default
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  compiler:
+    image: ghcr.io/trahloff/aldine-compiler:1.25.0@sha256:c41e4c5647c4a0f7838386ac6195ab37be24703d798adc1c1ac2c4301126d0b6
+    restart: on-failure
+    stop_grace_period: 30s
+    # Reaps orphaned pdflatex/biber children left by killed latexmk runs.
+    init: true
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - ${APP_DATA_DIR}/data/data:/data
+    # The compiler typesets untrusted LaTeX. Upstream's sandbox, kept as is:
+    # TeX Live is baked into the image, so it never needs the network. No
+    # `cpus:` cap, since one above the host's core count refuses to start.
+    networks:
+      - backend
+    mem_limit: 2g
+    pids_limit: 256
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4020/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+networks:
+  backend:
+    # The compiler has no route to the internet.
+    internal: true

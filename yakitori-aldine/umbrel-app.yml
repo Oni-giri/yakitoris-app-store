@@ -1,0 +1,211 @@
+manifestVersion: 2.0
+id: yakitori-aldine
+storage:
+  dataRoot: data
+category: files
+name: Aldine
+version: "1.25.0"
+tagline: Write LaTeX together, with git, Zotero, and AI assistants
+icon: https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/brand/icon.svg
+description: >-
+  Aldine is an open-source collaborative LaTeX editor and an Overleaf
+  alternative for papers, theses, and reports. Several people can edit at once
+  with live cursors (CRDT, conflict-free), warm recompiles take about two
+  seconds, and SyncTeX jumps both ways between the source and the PDF. A visual
+  mode renders LaTeX as formatted text with click-to-edit math and tables
+  while keeping the source byte-stable.
+
+
+  Every project is a real git repository with branches, history, checkpoints,
+  and merges from the UI. Import and publish to GitHub, GitLab, Gitea, or
+  Forgejo, pull co-authors' commits back, and open pull requests from the
+  editor. Bring an Overleaf project as its ZIP download. Link a Zotero library
+  or a single collection, search the literature (OpenAlex), or add BibTeX from
+  a DOI or arXiv id. Review mode adds anchored comment threads with
+  one-click suggested edits. Templates cover the common publisher classes and
+  25 conference and journal kits.
+
+
+  This package runs Aldine's app and its sandboxed TeX Live compiler. The
+  compiler has no internet access, drops every Linux capability, and is
+  limited to 2 GB of memory. It carries TeX Live's medium scheme plus the
+  pictures, latexextra, bibtexextra, and publisher collections, so the first
+  install downloads about 2.4 GB and uses about 5 GB of disk. CJK documents
+  are not supported by this image.
+
+
+  Accounts are off by default: Umbrel's login protects Aldine, and everyone who
+  signs in to this Umbrel shares every project. For collaborators with their
+  own accounts and per-project sharing, set AUTH_ENABLED to 1 in this app's
+  settings and sign up first; turn off Umbrel's login for this app only if
+  collaborators need to reach it. Anyone who can open the sign-up page can
+  create an account (ALDINE_SIGNUP=approval holds them for an administrator).
+  Projects made before then have no owner and stay open to every signed-in
+  user until someone claims them.
+
+
+  AI assistants (Claude Code, Claude Desktop, ChatGPT, and other MCP clients)
+  connect to `https://<device>.local:8480/mcp` with the header
+  `Authorization: Bearer <app password>`, using the password shown under this
+  app's Info. That path bypasses Umbrel's login; Aldine checks the token
+  itself. Every assistant change is a git commit you can review and revert.
+  Clients must trust your Umbrel's local HTTPS certificate (for example via
+  `NODE_EXTRA_CA_CERTS`). Set ALDINE_MCP to 0 to turn the MCP server off.
+
+
+  umbrelOS 2.0 or newer is required. Open Aldine through Umbrel's HTTPS launch
+  button. PDF and deep links from the MCP server point to
+  `https://<device>.local:8480`; to use a Tailscale `.ts.net` address instead,
+  set ALDINE_PUBLIC_URL in this app's settings.
+releaseNotes: >-
+  Initial Umbrel package of Aldine 1.25.0 (amd64 and arm64), with upstream's
+  sandboxed compiler, a built-in MCP server for AI assistants, and optional
+  accounts, AI error fix, and email settings. New in 1.25.0: project memory,
+  four Markdown files assistants read first and keep current, with an
+  "Article with project memory" template.
+developer: trahloff
+website: https://aldine.dev
+dependencies: []
+repo: https://github.com/trahloff/Aldine
+support: https://github.com/trahloff/Aldine/issues
+port: 8480
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/editor-light.png
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/visual-light.png
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/review-light.png
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/branches-light.png
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/zotero-light.png
+  - https://raw.githubusercontent.com/trahloff/Aldine/v1.25.0/e2e/shots/history-light.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+deterministicPassword: true
+environment:
+  - name: ALDINE_PUBLIC_URL
+    services:
+      - app
+    note: >-
+      The HTTPS origin you open Aldine at, with no trailing slash. Leave unset
+      for https://<device>.local:8480, or set your Tailscale URL (for example
+      https://<node>.<tailnet>.ts.net:8480). PDF and deep links from the MCP
+      server, OAuth, and email links use it.
+  - name: AUTH_ENABLED
+    services:
+      - app
+    options:
+      - "1"
+    note: >-
+      Set to 1 for accounts, sign-in, and per-project sharing. Unset, there is
+      no login inside Aldine and Umbrel's login is the only guard.
+  - name: ALDINE_ADMIN_EMAILS
+    services:
+      - app
+    note: >-
+      Comma-separated account emails that may open /admin to manage accounts.
+      Needs AUTH_ENABLED=1; a password account counts once its address is
+      confirmed.
+  - name: ALDINE_SIGNUP
+    services:
+      - app
+    options:
+      - open
+      - approval
+    note: >-
+      With AUTH_ENABLED=1: open (default) lets anyone who reaches Aldine create
+      an account; approval keeps new accounts waiting until an administrator
+      approves them on /admin.
+  - name: ALDINE_MCP
+    default: "1"
+    services:
+      - app
+    options:
+      - "1"
+      - "0"
+    note: >-
+      The MCP server at /mcp for AI assistants. With accounts off, its token is
+      the app password shown under Info; with AUTH_ENABLED=1, use Connect or a
+      personal access token instead. Set to 0 to turn it off.
+  - name: ALDINE_MCP_SYNC
+    services:
+      - app
+    options:
+      - "1"
+    note: >-
+      Set to 1 to let assistants push and pull a project's linked git
+      repository, in projects whose owner allows it in Project settings.
+  - name: OPENROUTER_API_KEY
+    services:
+      - app
+    note: >-
+      Optional key for the AI error fix on failed typesets. Precedence when
+      several keys are set: OpenRouter, then OpenAI, then Anthropic. Keys stay
+      on the server.
+  - name: OPENAI_API_KEY
+    services:
+      - app
+    note: >-
+      Optional OpenAI key for the AI error fix, or the key of any
+      OpenAI-compatible server set in ALDINE_AI_BASE_URL (any value for
+      Ollama).
+  - name: ANTHROPIC_API_KEY
+    services:
+      - app
+    note: >-
+      Optional Anthropic key for the AI error fix.
+  - name: ALDINE_AI_MODEL
+    services:
+      - app
+    note: >-
+      Optional model ID for the AI error fix. Defaults to the provider's
+      default model.
+  - name: ALDINE_AI_BASE_URL
+    services:
+      - app
+    note: >-
+      Optional OpenAI-compatible endpoint for the AI error fix, used with
+      OPENROUTER_API_KEY or OPENAI_API_KEY; for example
+      http://ollama_ollama_1:11434/v1 for Umbrel's Ollama app.
+  - name: ALDINE_AI_AUTOFIX
+    services:
+      - app
+    options:
+      - "1"
+    note: >-
+      Set to 1 to diagnose a failed typeset you asked for without a click, once
+      per new error. Needs an AI key.
+  - name: SMTP_HOST
+    services:
+      - app
+    note: >-
+      Optional outgoing mail server for sign-up confirmation, invitations, and
+      password reset. Also set SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM.
+  - name: SMTP_PORT
+    services:
+      - app
+    note: >-
+      SMTP port, for example 587 (STARTTLS) or 465 with SMTP_SECURE=1.
+  - name: SMTP_SECURE
+    services:
+      - app
+    options:
+      - "1"
+    note: >-
+      Set to 1 for implicit TLS (port 465) instead of STARTTLS.
+  - name: SMTP_USER
+    services:
+      - app
+    note: >-
+      SMTP user name.
+  - name: SMTP_PASS
+    services:
+      - app
+    note: >-
+      SMTP password.
+  - name: SMTP_FROM
+    services:
+      - app
+    note: >-
+      Sender address, for example "Aldine <latex@example.com>".
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store
