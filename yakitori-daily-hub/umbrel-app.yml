@@ -1,5 +1,7 @@
 manifestVersion: 2.0
 id: yakitori-daily-hub
+storage:
+  dataRoot: data
 category: files
 name: DailyHub
 version: "0.2.7"
@@ -23,7 +25,7 @@ description: >-
   patterns). Light and dark themes are built in.
 
 
-  DailyHub is built for one person: there are no accounts, teams, or
+  DailyHub is built for one person: there are no accounts, teams, or push
   notifications, and it has no login of its own. Umbrel's app login protects
   every page, so keep it enabled. All data lives in a single SQLite database
   plus uploaded project logos in this app's data folder on your Umbrel.
@@ -34,7 +36,10 @@ description: >-
   items, and habits. Connect them to `http://<device>.local:8771/mcp` (or your
   Tailscale IP) with the header `Authorization: Bearer <password>`, using the
   password shown in this app's credentials in Umbrel. Only `/mcp` bypasses
-  Umbrel's login, and it rejects every request without that token.
+  Umbrel's login, and it rejects every request without that token. The token
+  travels over plain HTTP on your LAN (Tailscale traffic is encrypted); to use
+  your own token instead, set `DAILYHUB_MCP_TOKEN` for the `web` service in
+  this app's advanced Environment settings.
 
 
   Set your timezone in this app's Environment settings (`TZ`, for example
@@ -68,6 +73,7 @@ defaultUsername: ""
 deterministicPassword: true
 environment:
   - name: TZ
+    default: UTC
     services:
       - web
     note: >-
@@ -81,6 +87,7 @@ environment:
       umbrel.tail1234.ts.net. <device>.local, IP addresses, and other local
       names always work; any other hostname gets a 403.
   - name: DAILYHUB_MCP_ENABLED
+    default: "true"
     services:
       - web
     options:

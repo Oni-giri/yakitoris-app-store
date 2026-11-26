@@ -1,7 +1,11 @@
 # DailyHub 0.2.7 (Next.js + SQLite, single container), adapted for umbrelOS:
 #   1. DailyHub has no login of its own, so every page stays behind Umbrel's
-#      app login. Only /mcp bypasses it: MCP clients cannot complete Umbrel's
-#      login page and authenticate with DailyHub's own bearer token instead.
+#      app login. Only the exact path /mcp bypasses it: MCP clients cannot
+#      complete Umbrel's login page and authenticate with DailyHub's own
+#      bearer token instead. Do NOT widen this to /mcp/*: any other path
+#      renders Next's 404 page, which still executes Server Actions sent with
+#      a Next-Action header, so an unauthenticated client could read, change,
+#      or delete all data. /mcp itself is a route handler and runs no actions.
 #   2. The MCP bearer token is Umbrel's deterministic app password (shown in
 #      the app's credentials dialog). Upstream's Docker image ships without a
 #      token, which leaves /mcp rejecting every request.
@@ -16,16 +20,18 @@
 #      app's Environment settings.
 #   5. `exec` replaces the shell with node after migrations so SIGTERM reaches
 #      the Next.js server on stop.
-#   6. SQLite database (data.db) and uploaded project logos persist under
+#   6. Prisma's update/usage check (checkpoint.prisma.io), run by
+#      `migrate deploy` on every start, is disabled.
+#   7. SQLite database (data.db) and uploaded project logos persist under
 #      APP_DATA_DIR/data. Migrations run on every start.
-#   7. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+#   8. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
 
 services:
   app_proxy:
     environment:
       APP_HOST: yakitori-daily-hub_web_1
       APP_PORT: 9999
-      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*"
+      PROXY_AUTH_WHITELIST: "/mcp"
 
   init:
     image: ghcr.io/baselhusam/daily-hub:0.2.7@sha256:6b3b1cec43b7a8ba617031920ed98250e218d6f9379eb959b8905fb68e9cb5a1
@@ -55,10 +61,11 @@ services:
       DATABASE_URL: file:/app/data/data.db
       DAILYHUB_MCP_TOKEN: ${APP_PASSWORD}
       NEXT_TELEMETRY_DISABLED: "1"
+      CHECKPOINT_DISABLE: "1"
     volumes:
       - ${APP_DATA_DIR}/data:/app/data
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9999/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9999/manifest.webmanifest"]
       interval: 30s
       timeout: 5s
       retries: 5
