@@ -1,0 +1,120 @@
+# GlitchTip 7.0.0, adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's HTTPS proxy so Secure session cookies and WebAuthn
+#      security keys work. The same port also answers plain HTTP, so SDKs that
+#      do not trust Umbrel's local CA can send events to an http:// DSN.
+#   2. Event ingest (/api/<project>/envelope|store|security|minidump), the REST API used
+#      by sentry-cli and API tokens, OTLP logs (/v1/logs), and the built-in MCP
+#      server (/mcp plus its OAuth discovery documents) bypass Umbrel's browser
+#      login. GlitchTip still authenticates every one of them itself, by DSN
+#      key, API token, OAuth token, or session.
+#   3. One GlitchTip process serves the web UI, ingests events, runs the task
+#      worker and scheduler, and applies database migrations on every start
+#      (upstream's default bin/start.sh).
+#   4. PostgreSQL 18 (with the max_locks_per_transaction GlitchTip's partitioned
+#      tables need) and Valkey (AOF-persisted, so sessions and queued tasks
+#      survive restarts) store state under APP_DATA_DIR/data.
+#   5. Per-device SECRET_KEY and database password are derived from the Umbrel
+#      seed in exports.sh.
+#   6. All images are pinned to release tags and multi-architecture digests.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-glitchtip_web_1
+      APP_PORT: 8000
+      # SDKs, sentry-cli, OpenTelemetry exporters, uptime heartbeats, and MCP
+      # clients cannot complete Umbrel's login page; they authenticate with
+      # GlitchTip directly. Include each exact prefix and its /* wildcard so a
+      # bare prefix probe does not 302 to app-auth.
+      PROXY_AUTH_WHITELIST: "/api,/api/*,/v1/logs,/v1/logs/*,/mcp,/mcp/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*"
+
+  postgres:
+    image: postgres:18.7-alpine3.24@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
+    restart: on-failure
+    stop_grace_period: 1m
+    # GlitchTip partitions its event tables by time and hash, so its queries
+    # take far more locks than PostgreSQL's default pool allows; without this,
+    # ingest eventually fails with "out of shared memory". Upstream recommends
+    # 512. https://glitchtip.com/documentation/install#postgresql-tuning
+    command: ["postgres", "-c", "max_locks_per_transaction=512"]
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${APP_GLITCHTIP_POSTGRES_PASSWORD}
+      POSTGRES_DB: glitchtip
+    volumes:
+      # PostgreSQL 18 images keep PGDATA in a major-version subdirectory
+      # (/var/lib/postgresql/18/docker), so mount the parent directory.
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  valkey:
+    image: valkey/valkey:9.2.0-alpine3.24@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
+    restart: on-failure
+    stop_grace_period: 30s
+    # GlitchTip keeps login sessions, MCP OAuth tokens, its cache, and its task
+    # queue here. AOF persistence keeps users signed in and queued alerts
+    # intact across restarts and app updates.
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - ${APP_DATA_DIR}/data/valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  web:
+    image: glitchtip/glitchtip:7.0.0@sha256:c245745b4179667da3aebd73fb8d4f1fd918f7d68ba07d1fd73ea688933b6e01
+    restart: on-failure
+    init: true
+    stop_grace_period: 1m
+    # Run as Umbrel's uid so source maps, debug files, and other uploads in the
+    # bind-mounted data/uploads directory are writable. The image's own app
+    # user (uid 5000) does not own Umbrel's app-data directories.
+    user: "1000:1000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    environment:
+      PORT: 8000
+      # uid 1000 has no passwd entry in the image; give libraries a writable home.
+      HOME: /tmp
+      SECRET_KEY: ${APP_GLITCHTIP_SECRET_KEY}
+      DATABASE_URL: postgres://glitchtip:${APP_GLITCHTIP_POSTGRES_PASSWORD}@yakitori-glitchtip_postgres_1:5432/glitchtip
+      VALKEY_URL: redis://yakitori-glitchtip_valkey_1:6379/0
+      # Base URL for DSNs, email links, and MCP/OAuth metadata. An https URL
+      # also makes GlitchTip mark session and CSRF cookies Secure.
+      GLITCHTIP_DOMAIN: ${APP_GLITCHTIP_DOMAIN}
+      # The first account can always sign up; after that, new users join by
+      # invitation only. Umbrel's login already gates the sign-up page, but this
+      # keeps registration closed if "Require Umbrel login" is ever turned off.
+      ENABLE_USER_REGISTRATION: "false"
+      ENABLE_ORGANIZATION_CREATION: "false"
+      # Built-in MCP server at /mcp so AI assistants can read issues, events,
+      # traces, and logs with a GlitchTip API token or OAuth.
+      GLITCHTIP_ENABLE_MCP: "true"
+      # Upstream's SSRF guard: uptime monitors may not target LAN addresses
+      # unless this is enabled from the app's Environment settings.
+      GLITCHTIP_UPTIME_ALLOW_PRIVATE_IPS: "false"
+      GLITCHTIP_RETENTION_DAYS: "90"
+      # Email stays disabled until EMAIL_URL (or another transport) is set in
+      # the app's Environment settings: no verification mails, no password
+      # resets, and email-only UI is hidden. Do not set EMAIL_* here, because
+      # merely defining one switches email on.
+    volumes:
+      - ${APP_DATA_DIR}/data/uploads:/code/uploads
+    healthcheck:
+      test: ["CMD", "python", "/code/healthcheck.py"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      # The first start creates the schema and partitions before serving.
+      start_period: 3m

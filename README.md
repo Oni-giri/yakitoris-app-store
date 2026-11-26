@@ -23,6 +23,7 @@ https://github.com/Oni-giri/yakitoris-app-store
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `yakitori-deepseek-harness` | AI | `8734` | `amd64`, `arm64` | DeepSeek's open-source agent harness in your browser with local workspace storage |
 | [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Productivity | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
 | [EdenText](https://github.com/stffnb/edentext) | `yakitori-edentext` | Files | `8748` (HTTPS) | `amd64`, `arm64` | Local-first browser word processor for `.docx` and `.odt` with optional AI and dictation proxies |
+| [GlitchTip](https://gitlab.com/glitchtip/glitchtip-backend) | `yakitori-glitchtip` | Developer | `8476` (HTTPS) | `amd64`, `arm64` | Sentry-compatible error tracking, performance, OTLP logs, and uptime monitoring with a built-in MCP server |
 | [Infisical](https://github.com/Infisical/infisical) | `yakitori-infisical` | Developer | `8311` (HTTPS) | `amd64`, `arm64` | Self-hosted secrets, internal PKI, KMS, and machine/agent credential vault |
 | [It's a Plan](https://github.com/croffasia/itsaplan) | `yakitori-itsaplan` | Files | `8743` (HTTPS) | `amd64`, `arm64` | Self-hosted issue tracker, docs, boards, and workflows for teams and AI agents |
 | [Octop](https://github.com/TencentCloud/Octop) | `yakitori-octop` | AI | `8105` | `amd64`, `arm64` | Multi-user, multi-agent AI assistant with web dashboard, IM channels, RAG, and cron |
@@ -31,5 +32,5 @@ https://github.com/Oni-giri/yakitoris-app-store
 
 ## Notes
 
-- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartdb`, `yakitori-doop`, `yakitori-edentext`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartdb`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
 - **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.
