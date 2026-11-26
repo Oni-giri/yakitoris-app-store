@@ -2,7 +2,7 @@ manifestVersion: 2
 storage:
   dataRoot: data
 id: yakitori-tirreno
-category: developer-tools
+category: developer
 name: tirreno
 version: "0.10.1-umbrel.2"
 tagline: In-app security — event tracking, risk scoring and threat detection
@@ -56,7 +56,7 @@ path: ""
 defaultUsername: ""
 defaultPassword: ""
 submitter: Yakitori
-submission: ""
+submission: https://github.com/Oni-giri/yakitoris-app-store
 releaseNotes: >-
   Second pass on this package: the database container no longer runs as an
   unprivileged uid, which is what made installs fail while Postgres was still

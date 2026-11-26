@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Umbrel sources this before the app's compose runs.
+# Umbrel sources this before the app's compose runs. Being sourced, it must not
+# change shell options.
 #
 # tirreno builds absolute URLs (login redirects, email links, the ingest URL it
 # prints on the dashboard) from SITE: a comma-separated host[:port] list with no
@@ -15,8 +15,6 @@
 # instead, e.g.
 #
 #   export APP_TIRRENO_SITE="umbrel.tailnet-xxxx.ts.net:8585"
-
-set -u
 
 PORT="${APP_PROXY_PORT:-8585}"
 LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"

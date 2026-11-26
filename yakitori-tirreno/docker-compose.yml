@@ -11,7 +11,7 @@ services:
 
   server:
     image: tirreno/tirreno:v0.10.1@sha256:a74e07b38eceb206496c6da58c66ca68f78ccf010428713ec0b2a19f09473a2a
-    restart: unless-stopped
+    restart: on-failure
     # cron forks a PHP process every 10 minutes; init reaps what it leaves behind.
     init: true
     volumes:
@@ -54,7 +54,7 @@ services:
 
   db:
     image: postgres:15@sha256:91b9edc40277faf94bc1e3d7ae621b185fa70f3099b94309c4731a8296114870
-    restart: unless-stopped
+    restart: on-failure
     # Runs as root deliberately. The official image's entrypoint has to chown
     # PGDATA and prepare /var/run/postgresql before it drops to the postgres user
     # via gosu; as an unprivileged uid it cannot do either and exits 1, which

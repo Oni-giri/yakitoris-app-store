@@ -171,7 +171,7 @@ services:
   # Idempotently creates the attachment bucket, then exits.
   minio-init:
     image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
-    restart: "no"
+    restart: on-failure
     depends_on:
       minio:
         condition: service_healthy
@@ -191,6 +191,8 @@ services:
   # start. The backup directory is persistent and dumps are retained for 30 days.
   migrate:
     image: ghcr.io/croffasia/itsaplan-api:1.13.0@sha256:ce6115bc891a546da96746a8e1c002a9fe51128c8d5e720622c750ec079f6219
+    # Deliberately not on-failure: every run takes a database dump first, so a
+    # persistently failing migration would loop and fill db-backups with dumps.
     restart: "no"
     command: ["bun", "run", "packages/db/src/migrate.ts"]
     depends_on:

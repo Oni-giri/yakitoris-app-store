@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Umbrel sources this before the app's compose runs.
+# Umbrel sources this before the app's compose runs. Being sourced, it must not
+# change shell options or leave helpers behind in Umbrel's shell.
 #
 # Doop builds its public origin from BETTER_AUTH_URL and only accepts requests
 # whose Origin is in TRUSTED_ORIGINS. Umbrel has no variable for the remote
@@ -13,8 +13,6 @@
 # domain, the remote domain and raw IP addresses are covered without knowing
 # the hostname ahead of time. The list stays scoped to the Umbrel device
 # instead of trusting every origin.
-
-set -u
 
 PORT="${APP_PROXY_PORT:-4400}"
 LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"
@@ -54,3 +52,5 @@ fi
 
 ALT="${ALT#,}"
 export APP_DOOP_URL_ALT="${ALT}"
+unset -f add
+unset ALT

@@ -18,11 +18,11 @@ https://github.com/Oni-giri/yakitoris-app-store
 | --- | --- | --- | --- | --- | --- |
 | [Anki Sync Hub](https://github.com/Oni-giri/anki-sync-hub) | `yakitori-anki-sync-hub` | Automation | `8723` | `amd64`, `arm64` | Private Anki sync service with a browser admin UI, REST API, and scoped MCP server |
 | [ARTEX](https://github.com/BaaRai/ARTEX) | `yakitori-artex` | Developer | `8787` | `amd64` | Autonomous multi-agent penetration testing platform with evidence-bound findings |
-| [BrowserPier](https://github.com/Oni-giri/browser-pier) | `yakitori-browserpier` | Developer | `7436` (`+7438` WebRTC) | `amd64`, `arm64` | Persistent Chromium browser profiles your AI agents can borrow via CDP, REST, or MCP |
+| [BrowserPier](https://github.com/Oni-giri/browser-pier) | `yakitori-browserpier` | Developer | `7436` (`+7438` WebRTC) | `amd64` | Persistent Chromium browser profiles your AI agents can borrow via CDP, REST, or MCP |
 | [Chartbrew](https://github.com/chartbrew/chartbrew) | `yakitori-chartbrew` | Developer | `4018` (HTTPS) | `amd64`, `arm64` | Live dashboards and reports from SQL/NoSQL databases and APIs, with an AI assistant, Data API, and MCP server |
 | [ChartDB](https://github.com/chartdb/chartdb) | `yakitori-chartdb` | Developer | `8754` (HTTPS) | `amd64`, `arm64` | Browser-based ER database diagram editor with Smart Query, SQL DDL, and DBML import/export |
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `yakitori-deepseek-harness` | AI | `8734` | `amd64`, `arm64` | DeepSeek's open-source agent harness in your browser with local workspace storage |
-| [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Productivity | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
+| [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Files | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
 | [EdenText](https://github.com/stffnb/edentext) | `yakitori-edentext` | Files | `8748` (HTTPS) | `amd64`, `arm64` | Local-first browser word processor for `.docx` and `.odt` with optional AI and dictation proxies |
 | [GlitchTip](https://gitlab.com/glitchtip/glitchtip-backend) | `yakitori-glitchtip` | Developer | `8476` (HTTPS) | `amd64`, `arm64` | Sentry-compatible error tracking, performance, OTLP logs, and uptime monitoring with a built-in MCP server |
 | [Infisical](https://github.com/Infisical/infisical) | `yakitori-infisical` | Developer | `8311` (HTTPS) | `amd64`, `arm64` | Self-hosted secrets, internal PKI, KMS, and machine/agent credential vault |

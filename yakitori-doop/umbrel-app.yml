@@ -2,7 +2,7 @@ manifestVersion: 2
 storage:
   dataRoot: data
 id: yakitori-doop
-category: productivity
+category: files
 name: Doop
 version: "0.15.0"
 tagline: Multiplayer design canvas for people and AI agents
@@ -50,4 +50,4 @@ path: ""
 defaultUsername: ""
 defaultPassword: ""
 submitter: Yakitori
-submission: ""
+submission: https://github.com/Oni-giri/yakitoris-app-store
