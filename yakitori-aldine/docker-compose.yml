@@ -16,8 +16,9 @@
 #      (exports.sh) for the absolute PDF and deep links the MCP server hands out.
 #   5. Accounts are off (upstream's single-tenant default) and Umbrel's login
 #      guards the editor. Only /mcp and Aldine's OAuth discovery, registration,
-#      token, and revoke endpoints bypass it; Aldine checks a bearer token on
-#      every one of them. The static MCP token is the per-device app password.
+#      token, and revoke endpoints bypass it. /mcp always requires a bearer
+#      token; the OAuth endpoints answer 404 while accounts are off. The static
+#      MCP token defaults to the per-device app password.
 #   6. Projects (one git repository each) and the PDF cache persist under
 #      APP_DATA_DIR/data/data; accounts, sessions, comments, generated signing
 #      secrets, and the SQLite database under APP_DATA_DIR/data/secrets.
@@ -28,17 +29,15 @@ services:
     environment:
       APP_HOST: yakitori-aldine_app_1
       APP_PORT: 3000
-      # MCP clients (Claude Code, Claude Desktop, ChatGPT, ...) cannot complete
-      # Umbrel's login page. Aldine authenticates every request here itself:
-      # /mcp needs the static token (or, with AUTH_ENABLED=1, an aldn_ token or
-      # OAuth grant); the OAuth endpoints answer 404 while accounts are off.
-      # The browser-facing /oauth/authorize consent page stays behind Umbrel's
-      # login. Each exact path is listed with its /* wildcard so a bare probe
-      # does not 302 to app-auth.
-      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/oauth/token,/oauth/register,/oauth/revoke"
-      # Keep collaborative-editing WebSockets and long typesets open across
-      # Umbrel's proxy (milliseconds).
-      PROXY_TIMEOUT: 3600000
+      # MCP clients such as Claude Code cannot complete Umbrel's login page.
+      # /mcp (Aldine serves exactly that path) always requires a bearer token:
+      # the static token, or with AUTH_ENABLED=1 an aldn_ token or OAuth grant.
+      # The OAuth endpoints answer 404 while accounts are off; with accounts on,
+      # discovery and client registration are public by design, and token and
+      # revoke check the client's grant. The browser-facing /oauth/authorize
+      # consent page stays behind Umbrel's login. The .well-known wildcards
+      # catch the path-inserted discovery forms MCP clients probe first.
+      PROXY_AUTH_WHITELIST: "/mcp,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/oauth/token,/oauth/register,/oauth/revoke"
 
   # One-shot root init: Umbrel creates APP_DATA_DIR/data owned by uid 1000.
   # Reuses the app image, so there is nothing extra to download.
@@ -50,6 +49,7 @@ services:
       - -c
       - find /data /secrets -xdev \( ! -user 0 -o ! -group 0 \) -exec chown -h 0:0 {} +
     restart: on-failure
+    network_mode: none
     volumes:
       - ${APP_DATA_DIR}/data/data:/data
       - ${APP_DATA_DIR}/data/secrets:/secrets
@@ -72,7 +72,8 @@ services:
       COMPILER_URL: http://yakitori-aldine_compiler_1:4020
       ALDINE_PUBLIC_URL: ${APP_YAKITORI_ALDINE_PUBLIC_URL}
       # Built-in MCP server for AI assistants. With accounts off, the static
-      # token is the credential: the app password shown under Info.
+      # token is the credential: the app password shown under Info, unless
+      # ALDINE_MCP_TOKEN is overridden in the app's settings.
       ALDINE_MCP: "1"
       ALDINE_MCP_TOKEN: ${APP_PASSWORD}
     volumes:

@@ -30,7 +30,7 @@ description: >-
   compiler has no internet access, drops every Linux capability, and is
   limited to 2 GB of memory. It carries TeX Live's medium scheme plus the
   pictures, latexextra, bibtexextra, and publisher collections, so the first
-  install downloads about 2.4 GB and uses about 5 GB of disk. CJK documents
+  install downloads about 2.5 GB and uses about 5 GB of disk. CJK documents
   are not supported by this image.
 
 
@@ -41,21 +41,31 @@ description: >-
   collaborators need to reach it. Anyone who can open the sign-up page can
   create an account (ALDINE_SIGNUP=approval holds them for an administrator).
   Projects made before then have no owner and stay open to every signed-in
-  user until someone claims them.
+  user until someone claims them. With accounts on, always open Aldine over
+  https://: sign-in and share-link cookies are HTTPS-only, so signing in over
+  plain http:// fails silently.
 
 
-  AI assistants (Claude Code, Claude Desktop, ChatGPT, and other MCP clients)
-  connect to `https://<device>.local:8480/mcp` with the header
+  AI assistants that run on your network, such as Claude Code or any other MCP
+  client, connect to `https://<device>.local:8480/mcp` with the header
   `Authorization: Bearer <app password>`, using the password shown under this
   app's Info. That path bypasses Umbrel's login; Aldine checks the token
   itself. Every assistant change is a git commit you can review and revert.
-  Clients must trust your Umbrel's local HTTPS certificate (for example via
-  `NODE_EXTRA_CA_CERTS`). Set ALDINE_MCP to 0 to turn the MCP server off.
+  Over HTTPS, clients must trust your Umbrel's local certificate (for example
+  via `NODE_EXTRA_CA_CERTS`); `http://<device>.local:8480/mcp` also works but
+  sends the token unencrypted over your network. Cloud connectors (claude.ai,
+  Claude Desktop and Cowork connectors, ChatGPT) call from the provider's
+  servers and cannot reach a private Umbrel; Claude Desktop can use a local
+  bridge such as `mcp-remote` instead. PDF links from the MCP server open in a
+  browser signed in to Umbrel, so Claude's inline PDF preview is not
+  available. Set ALDINE_MCP to 0 to turn the MCP server off, or
+  ALDINE_MCP_TOKEN to replace the token.
 
 
   umbrelOS 2.0 or newer is required. Open Aldine through Umbrel's HTTPS launch
   button. PDF and deep links from the MCP server point to
-  `https://<device>.local:8480`; to use a Tailscale `.ts.net` address instead,
+  `https://<device>.local:8480`; to use your Tailscale IP
+  (`https://<tailscale-ip>:8480`) or your `tailscale serve` address instead,
   set ALDINE_PUBLIC_URL in this app's settings.
 releaseNotes: >-
   Initial Umbrel package of Aldine 1.25.0 (amd64 and arm64), with upstream's
@@ -63,7 +73,7 @@ releaseNotes: >-
   accounts, AI error fix, and email settings. New in 1.25.0: project memory,
   four Markdown files assistants read first and keep current, with an
   "Article with project memory" template.
-developer: trahloff
+developer: Tobias Rahloff
 website: https://aldine.dev
 dependencies: []
 repo: https://github.com/trahloff/Aldine
@@ -87,9 +97,9 @@ environment:
       - app
     note: >-
       The HTTPS origin you open Aldine at, with no trailing slash. Leave unset
-      for https://<device>.local:8480, or set your Tailscale URL (for example
-      https://<node>.<tailnet>.ts.net:8480). PDF and deep links from the MCP
-      server, OAuth, and email links use it.
+      for https://<device>.local:8480, or set https://<tailscale-ip>:8480 or
+      your `tailscale serve` address. MCP PDF and deep links, OAuth (Connect
+      works only at this URL plus /mcp), and email links use it.
   - name: AUTH_ENABLED
     services:
       - app
@@ -97,14 +107,16 @@ environment:
       - "1"
     note: >-
       Set to 1 for accounts, sign-in, and per-project sharing. Unset, there is
-      no login inside Aldine and Umbrel's login is the only guard.
+      no login inside Aldine and Umbrel's login is the only guard. With accounts
+      on, open Aldine over https:// only; sign-in fails over plain http://.
   - name: ALDINE_ADMIN_EMAILS
     services:
       - app
     note: >-
       Comma-separated account emails that may open /admin to manage accounts.
       Needs AUTH_ENABLED=1; a password account counts once its address is
-      confirmed.
+      confirmed. Without SMTP, the confirmation link is printed in the app's
+      logs.
   - name: ALDINE_SIGNUP
     services:
       - app
@@ -126,6 +138,13 @@ environment:
       The MCP server at /mcp for AI assistants. With accounts off, its token is
       the app password shown under Info; with AUTH_ENABLED=1, use Connect or a
       personal access token instead. Set to 0 to turn it off.
+  - name: ALDINE_MCP_TOKEN
+    services:
+      - app
+    note: >-
+      Replaces the MCP bearer token. Leave unset to use the app password shown
+      under Info. Use a long random string, for example from
+      `openssl rand -hex 32`. Ignored when AUTH_ENABLED=1.
   - name: ALDINE_MCP_SYNC
     services:
       - app
@@ -157,8 +176,9 @@ environment:
     services:
       - app
     note: >-
-      Optional model ID for the AI error fix. Defaults to the provider's
-      default model.
+      Optional model ID for the AI error fix. Unset, Aldine picks one per
+      provider (gpt-4o for OpenAI and OpenAI-compatible endpoints), so set it
+      for Ollama, for example llama3.1.
   - name: ALDINE_AI_BASE_URL
     services:
       - app
