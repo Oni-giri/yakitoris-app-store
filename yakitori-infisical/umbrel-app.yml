@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: Infisical
-version: "0.167.15"
+version: "0.167.15-umbrel.1"
 tagline: Secrets, PKI certificates, KMS, and Agent Vault for teams and AI agents
 icon: https://avatars.githubusercontent.com/u/107880645?s=512&v=4
 description: >-
@@ -32,9 +32,14 @@ description: >-
   Agent Vault under `/api/v1/agent-vault/*`, ACME, OIDC discovery, and SCIM),
   `/secret-scanning/webhooks/*`, `/.well-known/est/*`, and `/scep/*` bypass
   Umbrel's login and authenticate directly with Infisical's own tokens,
-  signatures, or certificates. To bind WebAuthn passkeys, SSO callbacks, and
-  generated links to a Tailscale `.ts.net` domain instead of `<device>.local`,
-  set `SITE_URL` in this app's settings.
+  signatures, or certificates. To use another address for SSO callbacks and
+  generated links instead of `<device>.local`, set `SITE_URL` in this app's
+  settings. Your Tailscale IP (`https://100.x.y.z:8311`) works directly,
+  because Umbrel's certificate covers the device's IP addresses but not
+  `.ts.net` names. A `.ts.net` name works only through `tailscale serve`
+  (`https://<node>.<tailnet>.ts.net`, with no port), which supplies its own
+  certificate. WebAuthn passkeys need a domain name, so they cannot be bound to
+  an IP address.
 
 
   Shared-secret browser pages (`/shared/secret/*`) remain behind Umbrel's login
@@ -52,9 +57,10 @@ description: >-
   note that client-certificate mTLS headers cannot be terminated at Umbrel's
   proxy.
 releaseNotes: >-
-  Initial Umbrel package of Infisical 0.167.15 (amd64 and arm64), with
-  per-device 256-bit KMS root key derivation, HTTPS cookie/WebAuthn support on
-  umbrelOS 2.0+, and direct API/CLI/Agent Vault proxy passthrough.
+  Corrects the Tailscale guidance for `SITE_URL`: use your Tailscale IP
+  (`https://100.x.y.z:8311`), because Umbrel's certificate does not cover
+  `.ts.net` names on this port. A `.ts.net` address works only through
+  `tailscale serve`, without a port. No change to how Infisical runs.
 developer: Infisical Inc.
 website: https://infisical.com
 dependencies: []
@@ -74,8 +80,9 @@ environment:
     note: >-
       Canonical HTTPS URL used for WebAuthn passkeys, OAuth/SSO callbacks,
       invite/share links, and ACME/OIDC metadata. Leave unset for
-      https://<device>.local:8311, or set to your Tailscale URL (e.g.
-      https://<node>.<tailnet>.ts.net:8311).
+      https://<device>.local:8311, or use your Tailscale IP
+      (https://100.x.y.z:8311). Umbrel's certificate does not cover .ts.net
+      names; use those only via tailscale serve.
   - name: ENCRYPTION_KEY
     services:
       - backend
