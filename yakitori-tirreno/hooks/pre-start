@@ -14,6 +14,11 @@ APP_DATA_DIR="${APP_DATA_DIR:-$(readlink -f "$(dirname "$0")/..")}"
 mkdir -p "${APP_DATA_DIR}/secrets"
 chmod 755 "${APP_DATA_DIR}/secrets"
 
+# Create the bind-mount targets before Docker does. If Docker creates them they
+# are root:root, which breaks any container that then runs as an unprivileged
+# uid (Postgres chowns PGDATA itself, but only when it starts as root).
+mkdir -p "${APP_DATA_DIR}/data/db" "${APP_DATA_DIR}/data/config"
+
 file="${APP_DATA_DIR}/secrets/db-password"
 if [ ! -s "$file" ]; then
   umask 077

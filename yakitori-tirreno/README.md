@@ -10,7 +10,7 @@ yakitori-tirreno/
 ├── docker-compose.yml      # app_proxy + server + db, digest-pinned
 ├── exports.sh              # canonical host for absolute URLs
 ├── hooks/pre-start         # per-device database password
-├── icon.webp
+├── icon.svg                # white mark on the brand navy tile
 └── vps/                    # senders for a remote host (sh + Node, no deps)
 ```
 
@@ -30,7 +30,7 @@ first account exists and there is no password-reset flow by default
 | cron | In the same container, every 10 minutes: risk scores, enrichment, totals, retention. `LOG_TO_STDOUT=true` puts its output in Umbrel's app log view. |
 | `data/config` | Holds `config.local.ini`, which holds the generated **PEPPER**. The image mints it on first boot and ignores any `PEPPER` env var, so this directory is the only copy. Back it up with the database or neither is restorable. |
 | `secrets/db-password` | Generated once by `hooks/pre-start` and read via `POSTGRES_PASSWORD_FILE` / `cat` in the command. Never in the compose file, never in `docker inspect`, stable across updates. |
-| `db` as `1000:1000` | Matches the data-dir owner; the official postgres image then skips its root-only initdb-as-postgres path. Bootstrapping needs a superuser, which `POSTGRES_USER` is. |
+| `db` runs as **root** | The official postgres entrypoint has to `chown` `PGDATA` and prepare `/var/run/postgresql` before dropping to the `postgres` user via `gosu`. As an unprivileged uid it can do neither and exits 1, which fails `depends_on: db healthy` and stops the server from ever being created. |
 
 `assets/logs` is deliberately not persisted: it only holds container-local logs,
 and mounting an empty volume over it would hide the `error.log` the image creates

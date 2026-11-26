@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28" role="img" aria-label="tirreno">
+  <title>tirreno</title>
+  <defs>
+    <mask id="tirreno-mark" maskUnits="userSpaceOnUse" x="0" y="0" width="28" height="28">
+      <rect width="28" height="28" fill="#000"/>
+      <circle cx="14" cy="14" r="9.5" fill="#fff"/>
+      <rect x="12.219" y="-2" width="3.562" height="32" fill="#000"/>
+      <rect x="9.43" y="9.725" width="9.14" height="3.206" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="28" height="28" rx="7" fill="#161224"/>
+  <rect width="28" height="28" rx="7" fill="#fff" mask="url(#tirreno-mark)"/>
+</svg>

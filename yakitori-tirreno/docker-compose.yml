@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
   app_proxy:
     environment:
@@ -57,9 +55,10 @@ services:
   db:
     image: postgres:15@sha256:91b9edc40277faf94bc1e3d7ae621b185fa70f3099b94309c4731a8296114870
     restart: unless-stopped
-    # Matches the data-dir owner; the official image then skips its root-only
-    # chown/initdb-as-postgres path and initdb runs as this uid.
-    user: "1000:1000"
+    # Runs as root deliberately. The official image's entrypoint has to chown
+    # PGDATA and prepare /var/run/postgresql before it drops to the postgres user
+    # via gosu; as an unprivileged uid it cannot do either and exits 1, which
+    # then fails `depends_on: db healthy` and blocks the server from starting.
     volumes:
       - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
       - ${APP_DATA_DIR}/secrets:/run/secrets:ro
