@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: mcpspan
-version: "0.16.0"
+version: "0.16.0-umbrel.2"
 tagline: Self-hosted analytics for your MCP servers' tools, clients, and failures
 icon: https://raw.githubusercontent.com/mcpspan/mcpspan/ab876835f9b17e467031910c7bc506a6a4527cd7/docs/logo.svg
 description: >-
@@ -56,7 +56,8 @@ description: >-
   umbrelOS 2.0 or newer is required. The dashboard stays behind Umbrel's login.
   Event ingest, read-token API reads, `/mcp`, enabled badges, and the OAuth
   endpoints MCP clients call bypass it and are authenticated by mcpspan itself.
-  Account and key management are only reachable through the dashboard.
+  Sign-in, account, and key routes are not published on this port; the
+  dashboard reaches them over Umbrel's app network.
 
 
   There is no email: to reset a forgotten password, run
@@ -65,9 +66,11 @@ description: >-
   clients such as claude.ai only work if this app is reachable from the
   internet over HTTPS.
 releaseNotes: >-
-  Initial Umbrel package of mcpspan 0.16.0 (amd64 and arm64), with the
-  dashboard, SDK ingest, MCP server, badges, and OAuth on one port, TimescaleDB
-  with telemetry off, and per-device secrets.
+  Packaging fixes: OAuth sign-in to /mcp and Secure session cookies now work
+  through a `tailscale serve` HTTPS address set in the app's settings; a failed
+  database migration stops the start with its error instead of retrying in a
+  loop; CSV and NDJSON downloads stream without a timeout; refused methods
+  answer with an Allow header.
 developer: mcpspan
 website: https://mcpspan.com
 dependencies: []
@@ -88,16 +91,21 @@ environment:
   - name: MCPSPAN_INGEST_URL
     services:
       - dashboard
+      - router
     note: >-
       Address your MCP servers send telemetry to, shown in setup snippets, the
       /mcp address, and badge links. Leave unset for
       http://<device>.local:6270, or set e.g. https://<node>.<tailnet>.ts.net:6270.
+      An https:// address here is treated as HTTPS even when its TLS ends
+      before Umbrel, as with `tailscale serve`.
   - name: MCPSPAN_DASHBOARD_URL
     services:
       - api
+      - router
     note: >-
       Where MCP clients that sign in to /mcp with OAuth send you to allow them.
-      Leave unset for https://<device>.local:6270, or set your Tailscale URL.
+      Leave unset for https://<device>.local:6270, or set your Tailscale URL
+      (e.g. https://<node>.<tailnet>.ts.net:6270 from `tailscale serve`).
   - name: MCPSPAN_RETENTION_DAYS
     default: "90"
     services:

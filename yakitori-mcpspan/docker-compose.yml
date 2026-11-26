@@ -32,7 +32,7 @@ services:
       # complete Umbrel's login page; they authenticate with mcpspan API keys,
       # read tokens, or OAuth tokens. Exact paths plus /* so a bare prefix probe
       # gets mcpspan's JSON answer instead of a 302 to Umbrel's login.
-      PROXY_AUTH_WHITELIST: "/v1/events,/v1/servers,/v1/dashboard/*,/mcp,/mcp/*,/badge/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/openid-configuration,/oauth/register,/oauth/token,/oauth/revoke"
+      PROXY_AUTH_WHITELIST: "/v1/events,/v1/servers,/v1/dashboard/*,/mcp,/mcp/*,/badge/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/openid-configuration,/.well-known/openid-configuration/*,/oauth/register,/oauth/token,/oauth/revoke"
       # Keep MCP streams and large CSV/NDJSON exports open (milliseconds).
       PROXY_TIMEOUT: 3600000
 
@@ -50,15 +50,56 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-      - printf '%s' "$$NGINX_CONF" > /etc/nginx/conf.d/default.conf && exec /docker-entrypoint.sh nginx -g 'daemon off;'
+      - |
+        # Hosts the owner set in this app's settings as https:// addresses
+        # (for example a `tailscale serve` .ts.net name). Their TLS ends before
+        # Umbrel, which then sees, and reports, plain HTTP. Only overrides
+        # count: the device's own address answers HTTP and HTTPS alike, and
+        # Umbrel reports which one was used.
+        hosts=/etc/nginx/mcpspan-https-hosts.conf
+        : > "$$hosts"
+        for pair in "$$MCPSPAN_DASHBOARD_URL|$$MCPSPAN_DEFAULT_DASHBOARD_URL" "$$MCPSPAN_INGEST_URL|$$MCPSPAN_DEFAULT_INGEST_URL"; do
+          url="$${pair%%|*}"
+          [ "$$url" = "$${pair#*|}" ] && continue
+          case "$$url" in https://*) ;; *) continue ;; esac
+          host="$${url#https://}"
+          host="$${host%%/*}"
+          host="$${host%:443}"
+          case "$$host" in
+            "" | *[!A-Za-z0-9.:-]*) echo "mcpspan router: ignoring unusable address $$url" >&2 ;;
+            *) printf '"%s" 1;\n' "$$host" >> "$$hosts" ;;
+          esac
+        done
+        printf '%s' "$$NGINX_CONF" > /etc/nginx/conf.d/default.conf
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
     environment:
+      # The same values the api and dashboard get (overridable in the app's
+      # settings), and the defaults they are compared against.
+      MCPSPAN_DASHBOARD_URL: ${APP_MCPSPAN_DASHBOARD_URL}
+      MCPSPAN_INGEST_URL: ${APP_MCPSPAN_INGEST_URL}
+      MCPSPAN_DEFAULT_DASHBOARD_URL: ${APP_MCPSPAN_DASHBOARD_URL}
+      MCPSPAN_DEFAULT_INGEST_URL: ${APP_MCPSPAN_INGEST_URL}
       NGINX_CONF: |
-        # Umbrel's gateway sets X-Forwarded-Proto (https behind its HTTPS
-        # ingress). mcpspan marks session cookies Secure and builds its OAuth
-        # metadata from it, so only the two literal values are passed on.
-        map $$http_x_forwarded_proto $$mcpspan_proto {
-            https   https;
-            default http;
+        # Umbrel's gateway sets X-Forwarded-Proto to the scheme it was reached
+        # over. mcpspan marks session cookies Secure and builds its OAuth
+        # issuer and /mcp resource from it, so only https is passed on as
+        # https, plus hosts configured as https:// addresses (see entrypoint).
+        map $$http_host $$mcpspan_https_host {
+            default 0;
+            include /etc/nginx/mcpspan-https-hosts.conf;
+        }
+
+        map "$$http_x_forwarded_proto|$$mcpspan_https_host" $$mcpspan_proto {
+            "~^https\|"  https;
+            "~\|1$$"     https;
+            default      http;
+        }
+
+        # What each method-limited location below accepts, for the Allow
+        # header of its 405 (limit_except blocks do not run `set`).
+        map $$uri $$mcpspan_allow {
+            /v1/events  "POST";
+            default     "GET, HEAD";
         }
 
         server {
@@ -76,8 +117,8 @@ services:
             set $$mcpspan_api yakitori-mcpspan_api_1:6271;
             set $$mcpspan_dashboard yakitori-mcpspan_dashboard_1:6270;
 
-            # The Host header is kept so the API's OAuth metadata, /mcp
-            # resource, and badge links name the address the client used.
+            # The Host header is kept so the API's OAuth issuer and /mcp
+            # resource name the address the client used.
             proxy_http_version 1.1;
             proxy_set_header Host $$http_host;
             proxy_set_header Connection "";
@@ -90,6 +131,7 @@ services:
             error_page 403 = @method_not_allowed;
             location @method_not_allowed {
                 default_type application/json;
+                add_header Allow $$mcpspan_allow always;
                 return 405 '{"error":"Method not allowed"}';
             }
 
@@ -149,11 +191,24 @@ services:
             }
 
             # README badges, off per server until switched on in Settings.
+            # Their links come from MCPSPAN_INGEST_URL.
             location ^~ /badge/ {
                 limit_except GET {
                     deny all;
                 }
                 proxy_pass http://$$mcpspan_api;
+            }
+
+            # Without these, nginx would answer the bare prefixes above with an
+            # HTML redirect to the trailing-slash form.
+            location = /v1/dashboard {
+                default_type application/json;
+                return 404 '{"error":"Not found"}';
+            }
+
+            location = /badge {
+                default_type application/json;
+                return 404 '{"error":"Not found"}';
             }
 
             # OAuth for /mcp: discovery, registration, tokens, and revocation
@@ -166,6 +221,14 @@ services:
 
             location ~ ^/oauth/(register|token|revoke)$$ {
                 proxy_pass http://$$mcpspan_api;
+            }
+
+            # CSV and NDJSON downloads from the dashboard, streamed through it
+            # from the API.
+            location ^~ /api/export/ {
+                proxy_buffering off;
+                proxy_read_timeout 3600s;
+                proxy_pass http://$$mcpspan_dashboard;
             }
 
             # The dashboard, including its own /api routes and /oauth/authorize.
@@ -210,11 +273,13 @@ services:
       start_period: 30s
 
   # Schema changes run once, to completion, before anything serves a request.
-  # node-pg-migrate takes a lock and runs each migration in a transaction, so
-  # retrying after a failure is safe.
+  # One-shot, like upstream (restart "no"): some migrations run
+  # outside a transaction, so a failure should stop the start with its error
+  # rather than be retried in a loop, which would also leave api waiting on
+  # service_completed_successfully.
   migrate:
     image: ghcr.io/mcpspan/core-api:0.16.0@sha256:10aafb6a8cd7188d90d743000f5740e299c9d5a281e524a075d83c6c90c156c8
-    restart: on-failure
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
