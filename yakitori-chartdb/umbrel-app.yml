@@ -1,0 +1,77 @@
+manifestVersion: 2.0
+id: yakitori-chartdb
+category: developer
+name: ChartDB
+version: "1.21.0"
+tagline: Instant database schema diagrams and SQL/DBML editor in your browser
+icon: https://avatars.githubusercontent.com/u/177466511?s=512&v=4
+description: >-
+  ChartDB is an open-source, browser-based entity-relationship (ER) diagram
+  editor. Visualize existing schemas in seconds—without giving ChartDB network
+  access or credentials to your database—by pasting SQL DDL (`CREATE TABLE` /
+  `pg_dump --schema-only`), DBML, or the JSON output of ChartDB's read-only
+  Smart Query across PostgreSQL, MySQL, MariaDB, SQLite, SQL Server,
+  CockroachDB, ClickHouse, and Oracle.
+
+
+  Arrange tables, areas, views, custom types, check constraints, and notes on an
+  interactive canvas, compare schema diffs, and export clean SQL DDL, DBML, PNG,
+  SVG, or portable ChartDB `.json` files. Outbound Fathom analytics and ChartDB
+  Cloud prompts are disabled by default in this package.
+
+
+  By design, self-hosted ChartDB has no server-side database or account:
+  diagrams are stored locally in your browser's `IndexedDB` per origin
+  (surviving tab closes and Umbrel restarts in that browser). Opening ChartDB
+  from another device or hostname starts with a fresh workspace, and clearing
+  site data deletes browser-saved diagrams—use **Export Diagram (`.json`)** and
+  **Import Diagram** to back up schemas or move them between devices.
+
+
+  Optional AI SQL migration: same-dialect exports and common cross-dialect
+  exports (such as PostgreSQL to MySQL/MariaDB/SQL Server) run deterministically
+  offline with no API key. To enable OpenAI-assisted cross-dialect SQL export,
+  set `OPENAI_API_KEY` (and optionally `LLM_MODEL_NAME`) in this app's
+  Environment settings; because ChartDB injects runtime configuration into
+  browser `/config.js`, keep Umbrel's app login enabled whenever an API key is
+  configured.
+
+
+  umbrelOS 2.0 or newer is required. Open ChartDB over HTTPS via Umbrel's launch
+  button (`https://<device>.local:8754`), your Tailscale IP, or a `tailscale
+  serve` `.ts.net` address.
+releaseNotes: >-
+  Initial Umbrel package of ChartDB 1.21.0 (amd64 and arm64), with Fathom
+  analytics and ChartDB Cloud UI disabled by default, HTTPS browser-API support
+  on umbrelOS 2.0+, and optional OpenAI settings for AI-assisted SQL dialect
+  exports.
+developer: ChartDB
+website: https://chartdb.io
+dependencies: []
+repo: https://github.com/chartdb/chartdb
+support: https://github.com/chartdb/chartdb/issues
+port: 8754
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/chartdb/chartdb/v1.21.0/public/chartdb.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: OPENAI_API_KEY
+    services:
+      - web
+    note: >-
+      Optional OpenAI API key for AI-assisted cross-dialect SQL export (not
+      needed for diagramming, DBML, or built-in deterministic SQL exports).
+      Exposed to authenticated browsers via /config.js, so keep Umbrel login
+      enabled when set.
+  - name: LLM_MODEL_NAME
+    default: "gpt-4o-mini-2024-07-18"
+    services:
+      - web
+    note: >-
+      Optional OpenAI model ID for AI SQL export when OPENAI_API_KEY is set
+      (defaults to gpt-4o-mini-2024-07-18).
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

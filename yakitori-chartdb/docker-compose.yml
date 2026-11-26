@@ -1,0 +1,103 @@
+# ChartDB 1.21.0 static database diagramming editor, adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) so clipboard copy
+#      and browser storage APIs run in a secure context.
+#   2. No server-side database: diagrams stay in the user's browser IndexedDB
+#      and can be exported/imported as JSON, SQL DDL, DBML, PNG, or SVG.
+#   3. Outbound Fathom analytics and ChartDB Cloud upsells are disabled by
+#      default; optional OPENAI_API_KEY / LLM_MODEL_NAME can be set in Umbrel's
+#      app Environment settings for AI cross-dialect SQL export.
+#   4. Replaces upstream's raw envsubst-in-nginx /config.js return block with a
+#      JSON-escaped static /usr/share/nginx/html/config.js file (omitting unset
+#      or blank values so ChartDB's `??` defaults still work and special
+#      characters like `$`, `"`, or `\` cannot break nginx startup) and runs
+#      via /docker-entrypoint.sh so IPv6-disabled hosts start cleanly.
+#   5. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-chartdb_web_1
+      APP_PORT: 80
+
+  web:
+    image: ghcr.io/chartdb/chartdb:1.21.0@sha256:88664866464034f3fb3f6840f149e5beb6cc40d1b1665dbd787ab54b876d751c
+    restart: on-failure
+    stop_grace_period: 15s
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        printf '%s' "$$UMBREL_CHARTDB_HOOK" > /docker-entrypoint.d/40-umbrel-chartdb.sh
+        chmod 755 /docker-entrypoint.d/40-umbrel-chartdb.sh
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
+    environment:
+      DISABLE_ANALYTICS: "true"
+      HIDE_CHARTDB_CLOUD: "true"
+      UMBREL_CHARTDB_HOOK: |
+        #!/bin/sh
+        set -eu
+        awk '
+          function jesc(s, out, i, c) {
+            out = ""
+            for (i = 1; i <= length(s); i++) {
+              c = substr(s, i, 1)
+              if (c == "\\")      out = out "\\\\"
+              else if (c == "\"") out = out "\\\""
+              else if (c == "\n") out = out "\\n"
+              else if (c == "\r") out = out "\\r"
+              else if (c == "\t") out = out "\\t"
+              else                out = out c
+            }
+            return out
+          }
+          function emit(k, v) {
+            if (v != "") {
+              printf "%s  %s: \"%s\"", (n++ ? ",\n" : ""), k, jesc(v)
+            }
+          }
+          BEGIN {
+            n = 0
+            print "window.env = {"
+            emit("OPENAI_API_KEY", ENVIRON["OPENAI_API_KEY"])
+            emit("OPENAI_API_ENDPOINT", ENVIRON["OPENAI_API_ENDPOINT"])
+            emit("LLM_MODEL_NAME", ENVIRON["LLM_MODEL_NAME"])
+            emit("HIDE_CHARTDB_CLOUD", ENVIRON["HIDE_CHARTDB_CLOUD"])
+            emit("DISABLE_ANALYTICS", ENVIRON["DISABLE_ANALYTICS"])
+            printf "%s};\n", (n ? "\n" : "")
+          }
+        ' > /usr/share/nginx/html/config.js
+
+        listen_ipv6=""
+        if [ -f /proc/net/if_inet6 ]; then
+          listen_ipv6="    listen [::]:80;"
+        fi
+        cat > /etc/nginx/conf.d/default.conf <<EOF
+        server {
+            listen 80;
+        $${listen_ipv6}
+
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+
+            location = /config.js {
+                default_type application/javascript;
+                add_header Cache-Control "no-store" always;
+            }
+
+            location / {
+                try_files \$$uri \$$uri/ /index.html;
+            }
+
+            error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+                root /usr/share/nginx/html;
+            }
+        }
+        EOF
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
