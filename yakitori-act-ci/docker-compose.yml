@@ -1,0 +1,63 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-act-ci_web_1
+      APP_PORT: 8080
+      # Exempt only bearer-authenticated API and MCP endpoints from Umbrel's cookie login.
+      # Admin UI routes live outside /api/* and /mcp* and remain behind Umbrel's login.
+      PROXY_AUTH_WHITELIST: "/api/*,/mcp,/mcp/*"
+
+  docker:
+    image: docker:27.2.0-dind@sha256:d1d6d5265119696d8fa9b883f813953c560c5d87ea128a57681239b576f62997
+    privileged: true
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        rm -f /data/docker.pid
+        mkdir -p /var/run/dind
+        chmod 0755 /var/run/dind
+        dockerd-entrypoint.sh dockerd \
+          --data-root=/data/data \
+          --exec-root=/data/exec \
+          --pidfile=/data/docker.pid \
+          --host=unix:///var/run/dind/docker.sock \
+          --storage-driver=overlay2 &
+        dind_pid=$$!
+        for _ in $$(seq 1 60); do
+          if [ -S /var/run/dind/docker.sock ]; then
+            chmod 0666 /var/run/dind/docker.sock
+            break
+          fi
+          sleep 0.5
+        done
+        wait "$$dind_pid"
+    volumes:
+      - ${APP_DATA_DIR}/data/docker:/data
+      - ${APP_DATA_DIR}/data/dind-run:/var/run/dind
+
+  web:
+    image: ghcr.io/oni-giri/act-ci:0.1.1@sha256:ac8d4873957f7d04f4e04c2dcef7b304efaa3af9937526c20f8f78fc049b4478
+    user: "1000:1000"
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      - docker
+    environment:
+      ACT_CI_DATA_DIR: /data
+      ACT_CI_HOST: 0.0.0.0
+      ACT_CI_PORT: "8080"
+      ACT_CI_DOCKER_HOST: unix:///var/run/dind/docker.sock
+      ACT_CI_MASTER_KEY: "${APP_YAKITORI_ACT_CI_MASTER_KEY}"
+      ACT_CI_CSRF_SECRET: "${APP_YAKITORI_ACT_CI_CSRF_SECRET}"
+      ACT_CI_ALLOW_LOCAL_REPOS: "0"
+    volumes:
+      - ${APP_DATA_DIR}/data/app:/data
+      - ${APP_DATA_DIR}/data/dind-run:/var/run/dind

@@ -1,0 +1,50 @@
+manifestVersion: 2
+id: yakitori-act-ci
+storage:
+  dataRoot: data
+category: developer
+name: Act-CI
+version: "0.1.1"
+tagline: Self-hosted GitHub Actions CI powered by nektos/act
+description: >-
+  ⚠️ Security & host-access disclosure: Act-CI runs a privileged
+  Docker-in-Docker sidecar container and executes workflow code from the
+  repositories and overlays you run. It never mounts Umbrel's host Docker
+  socket, so build containers stay inside the isolated sidecar daemon, but
+  privileged containers still carry elevated risk. Install Act-CI only on an
+  Umbrel you trust and keep it behind Umbrel's login on your LAN or Tailscale
+  network.
+
+
+  Act-CI is a small, self-hosted CI service that runs GitHub Actions workflows
+  locally with nektos/act. It has no inbound GitHub integration—no OAuth app,
+  no webhooks, and no user accounts. Repositories are cloned on demand using
+  optional read-only tokens or SSH deploy keys, and runs are triggered from the
+  browser UI, the REST API, or the built-in MCP server.
+
+
+  After installing, open Act-CI from your Umbrel home screen:
+
+
+  - Add repositories on the Repos page with a default runner image, timeout, and
+  optional encrypted workflow secrets.
+
+  - Create Operator or Viewer bearer tokens on the Tokens page for coding agents
+  and CLI tools on your network.
+
+  - Connect MCP clients to `/mcp` or call `/api/v1/*` with your bearer token,
+  and audit every read and write on the append-only Activity page.
+releaseNotes: ""
+developer: Yakitori
+website: https://github.com/Oni-giri/act-ci
+dependencies: []
+repo: https://github.com/Oni-giri/act-ci
+support: https://github.com/Oni-giri/act-ci/issues
+port: 8755
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+icon: https://raw.githubusercontent.com/Oni-giri/act-ci/v0.1.1/assets/icon.svg
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

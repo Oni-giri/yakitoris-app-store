@@ -16,6 +16,7 @@ https://github.com/Oni-giri/yakitoris-app-store
 
 | App | ID | Category | Port | Arch | Summary |
 | --- | --- | --- | --- | --- | --- |
+| [Act-CI](https://github.com/Oni-giri/act-ci) | `yakitori-act-ci` | Developer | `8755` | `amd64`, `arm64` | Self-hosted GitHub Actions CI powered by `nektos/act` with isolated DinD, REST API, and MCP server |
 | [Aldine](https://github.com/trahloff/Aldine) | `yakitori-aldine` | Files | `8480` (HTTPS) | `amd64`, `arm64` | Collaborative LaTeX editor with git branches, Zotero, a sandboxed TeX Live compiler, and a built-in MCP server |
 | [Anki Sync Hub](https://github.com/Oni-giri/anki-sync-hub) | `yakitori-anki-sync-hub` | Automation | `8723` | `amd64`, `arm64` | Private Anki sync service with a browser admin UI, REST API, and scoped MCP server |
 | [ARTEX](https://github.com/BaaRai/ARTEX) | `yakitori-artex` | Developer | `8787` | `amd64` | Autonomous multi-agent penetration testing platform with evidence-bound findings |
@@ -38,5 +39,5 @@ https://github.com/Oni-giri/yakitoris-app-store
 
 ## Notes
 
-- **`manifestVersion: 2` / `2.0` apps** (`yakitori-aldine`, `yakitori-browserpier`, `yakitori-chartbrew`, `yakitori-chartdb`, `yakitori-daily-hub`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-keeper`, `yakitori-maxun`, `yakitori-mcpspan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-act-ci`, `yakitori-aldine`, `yakitori-browserpier`, `yakitori-chartbrew`, `yakitori-chartdb`, `yakitori-daily-hub`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-keeper`, `yakitori-maxun`, `yakitori-mcpspan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
 - **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.
