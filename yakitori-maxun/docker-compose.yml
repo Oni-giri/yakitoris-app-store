@@ -14,11 +14,20 @@
 #      Swagger UI, and account endpoints stay behind it.
 #   4. The browser service runs Chromium with --no-sandbox, so upstream's
 #      SYS_ADMIN capability and unconfined seccomp profile are not needed.
+#      Its Playwright endpoint has no authentication in this release (anyone
+#      who can reach it controls the browser), so it lives on a private
+#      network shared only with the backend instead of umbrel_main_network.
+#      Other apps cannot reach it, and robots cannot reach other apps'
+#      containers. It keeps normal outbound internet access.
 #   5. Upstream's minio/minio image is no longer published; the
 #      community-maintained pgsty/minio drop-in build is used instead.
 #   6. PostgreSQL and MinIO persist under APP_DATA_DIR/data. Secrets are
-#      derived from the Umbrel seed in exports.sh. Telemetry is disabled.
-#   7. All images are pinned to release tags and multi-arch (amd64 + arm64)
+#      derived from the Umbrel seed in exports.sh. PostHog usage telemetry is
+#      disabled.
+#   7. The backend runs node directly and stops on SIGINT, the only signal its
+#      shutdown handler listens for, so interrupted runs are recorded as
+#      failed with their partial data instead of being killed mid-write.
+#   8. All images are pinned to release tags and multi-arch (amd64 + arm64)
 #      digests.
 
 services:
@@ -31,10 +40,12 @@ services:
       # Maxun CLI/MCP server, n8n, and scripts that cannot complete Umbrel's
       # login. Run screenshots are public-read upstream and keyed by run UUID;
       # API clients receive their URLs in run results.
+      # The bare bucket path is not whitelisted on purpose: the router answers
+      # 404 for it, so it has nothing to serve without a login either.
       PROXY_AUTH_WHITELIST: "/api,/api/*,/files/maxun-run-screenshots/*"
-      # Synchronous API runs, LLM extraction, and the recorder's Socket.IO
-      # stream can stay open for a long time (milliseconds).
-      PROXY_TIMEOUT: 3600000
+      # PROXY_TIMEOUT is left unset: the gateway then never times out, which
+      # synchronous API runs, LLM extraction, and Socket.IO streams need. The
+      # router below still caps upstream reads at one hour.
 
   # Single-origin entry point. Inlined (NGINX_CONF) rather than bind-mounted
   # from the app folder so Umbrel app updates reliably apply config changes.
@@ -234,7 +245,7 @@ services:
       start_period: 20s
 
   # Headless Chromium (Playwright server with the stealth plugin) that robots
-  # and the recorder drive. Reached only by the backend over the app network.
+  # and the recorder drive. Only on the private `browser` network (see below).
   browser:
     image: getmaxun/maxun-browser:v0.0.2@sha256:8d78aff8d2d28d0fcefb9609c8326ccceb495149b4f79b6e178f5df2f0d24271
     restart: on-failure
@@ -249,6 +260,8 @@ services:
       # The health endpoint hands the backend this host in the CDP WebSocket URL.
       BROWSER_WS_HOST: yakitori-maxun_browser_1
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    networks:
+      - browser
     deploy:
       resources:
         limits:
@@ -274,16 +287,24 @@ services:
         condition: service_healthy
       browser:
         condition: service_healthy
+    # Upstream runs `npm run server` (npm -> sh -> cross-env -> node). Running
+    # node directly under init lets SIGINT reach the shutdown handler.
+    command: ["node", "server/dist/server/src/server.js"]
+    stop_signal: SIGINT
+    # Joins the app network (router, PostgreSQL, MinIO, Ollama) and the
+    # private browser network.
+    networks:
+      - default
+      - browser
     # Lets OLLAMA_BASE_URL point at an Ollama server on the Umbrel host itself.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=4096
       BACKEND_PORT: 8080
-      # Canonical origin: CORS origin, OAuth return URLs, and the base of
-      # stored screenshot URLs (rewritten per request by the router).
+      # Canonical origin, used as the CORS origin and for OAuth return URLs.
       PUBLIC_URL: ${APP_MAXUN_PUBLIC_URL}
-      BACKEND_URL: ${APP_MAXUN_PUBLIC_URL}
       JWT_SECRET: ${APP_MAXUN_JWT_SECRET}
       SESSION_SECRET: ${APP_MAXUN_SESSION_SECRET}
       # 64-hex AES-256 key for stored proxy credentials and API secrets.
@@ -297,9 +318,12 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: maxun
       MINIO_SECRET_KEY: ${APP_MAXUN_MINIO_SECRET}
+      # Base of the screenshot URLs stored with each run. The router rewrites
+      # this default to the requesting origin; a user override (app settings)
+      # is served as-is.
       MINIO_PUBLIC_URL: ${APP_MAXUN_PUBLIC_URL}/files
+      # The backend reads the CDP WebSocket URL from the browser's /health.
       BROWSER_WS_HOST: yakitori-maxun_browser_1
-      BROWSER_WS_PORT: 3001
       BROWSER_HEALTH_PORT: 3002
       # Upstream's default is to send PostHog usage events; keep it off.
       MAXUN_TELEMETRY: "false"
@@ -307,6 +331,9 @@ services:
       # own. Defaults to the Ollama app from the Umbrel App Store.
       OLLAMA_BASE_URL: http://ollama_ollama_1:11434
       ALLOW_PRIVATE_WEBHOOK_URLS: "false"
+    # Note for future updates: the backend only creates missing tables on
+    # start (sequelize sync without alter); schema changes in later releases
+    # need a one-shot `npm run migrate` service gated before it.
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8080/', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 15s
@@ -336,3 +363,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+# Private bridge network for the browser service and the backend only. Not
+# `internal`: Chromium needs outbound internet access to scrape. Docker drops
+# traffic between bridge networks, so containers on umbrel_main_network (every
+# other app) cannot reach the unauthenticated Playwright endpoint, and pages
+# the browser loads cannot reach other apps' containers.
+# yakitori-allow: compose.networks isolates the unauthenticated Playwright browser endpoint from other apps
+networks:
+  browser: {}

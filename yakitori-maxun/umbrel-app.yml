@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: Maxun
-version: "0.1.0"
+version: "0.1.0-umbrel.1"
 tagline: Turn any website into a structured API with no-code and AI robots
 icon: https://avatars.githubusercontent.com/u/139582646?s=512&v=4
 description: >-
@@ -19,22 +19,14 @@ description: >-
 
   This package runs Maxun's backend, frontend, and headless Chromium browser
   service alongside PostgreSQL and MinIO on your Umbrel, with per-device
-  secrets and upstream telemetry turned off. On first launch, open the app and
-  choose **Register** to create your account, then generate an API key from
-  the **API Key** page.
+  secrets and PostHog usage telemetry turned off.
 
 
-  umbrelOS 2.0 or newer is required. Open Maxun over HTTPS via Umbrel's launch
-  button (`https://<device>.local:8767`), your Tailscale IP, or a `tailscale
-  serve` `.ts.net` address. The web interface stays behind Umbrel's login,
-  while the REST API under `/api` (robots, runs, SDK, crawl, search, and
-  extract) bypasses it and authenticates with Maxun's own `x-api-key` header.
-  Point the Node.js and Python SDKs at
-  `https://<device>.local:8767/api/sdk/` (`MAXUN_BASE_URL`), and the Maxun
-  MCP server at `https://<device>.local:8767` (`BACKEND_URL`); n8n and
-  scripts call `/api/...` directly. Swagger docs are at `/api-docs`. Clients
-  connecting over `.local` must trust your Umbrel's local certificate
-  authority.
+  🛠️ SET-UP INSTRUCTIONS
+
+
+  Open the app and choose **Register** to create your account, then generate an
+  API key from the **API Key** page.
 
 
   AI features: a robot can carry its own LLM provider, model, and key. As a
@@ -43,18 +35,53 @@ description: >-
   Store, so install it and pull a model to extract with local models.
 
 
-  Good to know: robots browse from your Umbrel's network. Run screenshots are
-  served from `/files` with unguessable run-specific URLs that, like upstream,
-  open without a login. Webhooks to private or Tailscale addresses (such as
-  n8n on this Umbrel) are blocked unless you enable
-  `ALLOW_PRIVATE_WEBHOOK_URLS`. Maxun Cloud extras such as managed anti-bot
-  proxies, CAPTCHA solving, and auto robots are not part of the open-source
-  edition; you can add your own proxy on the **Proxy** page.
+  🤖 AI ASSISTANTS
+
+
+  Agents and scripts call the REST API with Maxun's `x-api-key` header: from
+  another app on this Umbrel at `http://yakitori-maxun_router_1/api/...`, or
+  from your network at `https://<device>.local:8767/api/...` (plain `http://`
+  works on the same port for clients that do not trust Umbrel's certificate).
+  Point the Node.js and Python SDKs at `https://<device>.local:8767/api/sdk/`
+  (`MAXUN_BASE_URL`) and Maxun's MCP server at `https://<device>.local:8767`
+  (`BACKEND_URL`). Swagger docs are at `/api-docs`. An API key has full
+  access to its account's robots and runs, so give agents their own Maxun
+  account and revoke the key from the **API Key** page if it leaks.
+
+
+  ⚠️ GOOD TO KNOW
+
+
+  umbrelOS 2.0 or newer is required. The web interface stays behind Umbrel's
+  login; only the REST API under `/api` (authenticated by Maxun's API key) and
+  run screenshots under `/files` (unguessable, read-only, run-specific URLs
+  that also open without a login upstream) bypass it. Do not forward this
+  app's port to the internet.
+
+
+  Robots browse from your Umbrel, so they can open anything on your home
+  network (router, NAS, printers) and Umbrel apps whose login is turned off.
+  The browser runs on a private network that other apps cannot reach and that
+  cannot reach other apps' containers. Webhooks to private or Tailscale
+  addresses (such as n8n on this Umbrel) are blocked unless you enable
+  `ALLOW_PRIVATE_WEBHOOK_URLS`.
+
+
+  Screenshot links stored with each run use `https://<device>.local:8767`;
+  the app shows them from whichever address you open it on, but links sent in
+  webhooks keep that address, and renaming the device breaks older ones. Set
+  `MINIO_PUBLIC_URL` to pin another address. Maxun Cloud extras such as
+  managed anti-bot proxies, CAPTCHA solving, and auto robots are not part of
+  the open-source edition; you can add your own proxy on the **Proxy** page.
 releaseNotes: >-
-  Initial Umbrel package of Maxun 0.1.0 (amd64 and arm64), served from one
-  HTTPS origin with same-origin API and Socket.IO calls, run screenshots that
-  load from any hostname, PostgreSQL 18, a maintained MinIO build, and
-  telemetry disabled.
+  Hardens the browser service and fixes shutdown. Maxun's headless browser now
+  runs on a private network: other Umbrel apps can no longer reach its
+  unauthenticated control endpoint, and robots can no longer open other apps'
+  internal services. The backend now shuts down cleanly when the app stops, so
+  interrupted runs are marked failed and keep their partial data. Adds settings
+  for the document-robot Ollama model and the screenshot link address, removes
+  the one-hour gateway timeout, and corrects the OpenAI, Ollama, and webhook
+  setting descriptions.
 developer: Maxun
 website: https://maxun.dev
 dependencies: []
@@ -72,14 +99,15 @@ environment:
       - backend
     note: >-
       Optional OpenAI key used by AI extraction when a robot has no key of its
-      own. Stays on the server; it is only sent to OpenAI or to
+      own. It stays on the server and is only sent to api.openai.com or to
       OPENAI_BASE_URL.
   - name: OPENAI_BASE_URL
     services:
       - backend
     note: >-
       Optional OpenAI-compatible endpoint (for example LM Studio or vLLM) that
-      may receive OPENAI_API_KEY. Leave unset for api.openai.com.
+      may also receive OPENAI_API_KEY when a robot uses exactly this base URL.
+      It does not change the default endpoint, which stays api.openai.com.
   - name: ANTHROPIC_API_KEY
     services:
       - backend
@@ -98,8 +126,16 @@ environment:
     services:
       - backend
     note: >-
-      Optional default Ollama model for AI extraction, such as llama3.2 or
-      qwen3. It must already be pulled on the Ollama server.
+      Optional default Ollama model for AI extraction robots, such as llama3.2
+      or qwen3. It must already be pulled on the Ollama server.
+  - name: OLLAMA_DEFAULT_MODEL
+    default: "llama3.2:latest"
+    services:
+      - backend
+    note: >-
+      Ollama model used by document robots (PDF, DOCX, images) when they have
+      none of their own. Defaults to llama3.2:latest, which must be pulled on
+      the Ollama server.
   - name: OLLAMA_API_KEY
     services:
       - backend
@@ -115,7 +151,14 @@ environment:
       - backend
     note: >-
       Set to true to let webhooks reach private, loopback, and Tailscale
-      (100.64.0.0/10) addresses, such as n8n on this Umbrel. Off by default
-      to prevent requests to internal services.
+      (100.64.0.0/10) addresses, such as n8n on this Umbrel. This only affects
+      webhooks, not which pages robots can open.
+  - name: MINIO_PUBLIC_URL
+    services:
+      - backend
+    note: >-
+      Base address stored in new run screenshot links, ending in /files. Leave
+      unset for https://<device>.local:8767/files, or pin another address such
+      as https://100.x.y.z:8767/files. Existing links are not changed.
 submitter: Yakitori
 submission: https://github.com/Oni-giri/yakitoris-app-store

@@ -11,6 +11,7 @@ export APP_MAXUN_ENCRYPTION_KEY="$(derive_entropy "${app_entropy_identifier}-enc
 
 # APP_PROXY_PORT is assigned after exports.sh is sourced by Umbrel, so retain
 # the manifest's port as a fallback. DEVICE_DOMAIN_NAME is already available.
-PORT="${APP_PROXY_PORT:-8767}"
-LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"
-export APP_MAXUN_PUBLIC_URL="https://${LOCAL_DOMAIN}:${PORT}"
+_maxun_port="${APP_PROXY_PORT:-8767}"
+_maxun_host="${DEVICE_DOMAIN_NAME:-umbrel.local}"
+export APP_MAXUN_PUBLIC_URL="https://${_maxun_host}:${_maxun_port}"
+unset _maxun_port _maxun_host
