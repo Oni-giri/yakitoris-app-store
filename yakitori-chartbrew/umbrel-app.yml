@@ -1,0 +1,131 @@
+manifestVersion: 2.0
+id: yakitori-chartbrew
+storage:
+  dataRoot: data
+category: developer
+name: Chartbrew
+version: "6.0.1"
+tagline: Live dashboards and reports from your databases and APIs, with an AI assistant
+icon: https://avatars.githubusercontent.com/u/57401255?s=512&v=4
+description: >-
+  Chartbrew is an open-source reporting platform for building live dashboards
+  and client reports from PostgreSQL, MySQL, MongoDB, ClickHouse, Supabase,
+  TimescaleDB, Firestore, Realtime Database, REST APIs, Strapi, Stripe, Google
+  Analytics, Customer.io, Jira, and other MCP servers. Write SQL or use the
+  visual query builder, turn
+  results into reusable datasets, and arrange charts, KPIs, tables, and
+  filters on dashboards that refresh on a schedule. Share them as public
+  reports or embeddable charts, set data alerts, and send snapshot reports.
+
+
+  On first launch, open the app and create your account—this first account can
+  always sign up, and self-service sign-up then closes; invite everyone else
+  from your team settings.
+
+
+  This package runs the official Chartbrew image with PostgreSQL and Redis,
+  per-device encryption keys derived from your Umbrel, and a single HTTPS
+  origin for the UI, API, real-time updates, and MCP. Data sources on your LAN,
+  your tailnet, or this Umbrel are reachable out of the box (upstream blocks
+  private network ranges by default; set `CB_ALLOW_PRIVATE_NETWORK_CALLS` to
+  `false` in this app's settings to restore that).
+
+
+  For AI agents: Chartbrew includes an MCP server and a versioned Data API with
+  scoped access (read data by default; refresh, preview, and dataset writes are
+  opt-in scopes). Create an API key in Team settings > API keys, or connect an MCP client
+  to `https://<device>.local:4018/mcp` with OAuth. These endpoints and `/api/*`
+  bypass Umbrel's login and authenticate with Chartbrew's own tokens. MCP OAuth
+  only accepts the URL in `CB_SITE_URL`; to connect agents over Tailscale, set it
+  to your `tailscale serve` address (e.g. `https://<node>.<tailnet>.ts.net:4018`).
+
+
+  Public dashboards, report links, and embedded charts are behind Umbrel's login
+  by default. To share them with people who have no Umbrel account, disable
+  "Require Umbrel login" in this app's settings; Chartbrew still protects every
+  private page and API with its own accounts.
+
+
+  The AI assistant (natural-language charts, SQL generation, dashboard building)
+  needs an OpenAI API key in `CB_OPENAI_API_KEY`. Email (invites, password
+  resets, snapshot reports) needs SMTP settings; without them, add teammates via
+  invite links.
+
+
+  umbrelOS 2.0 or newer is required. Open Chartbrew over HTTPS via Umbrel's
+  launch button, your Tailscale IP, or a `.ts.net` URL. The first start runs all
+  database migrations and can take a couple of minutes. The in-app news feed and
+  update check contact chartbrew.com.
+releaseNotes: >-
+  Initial Umbrel package of Chartbrew 6.0.1 (amd64 and arm64), with PostgreSQL
+  and Redis, per-device encryption keys, a single-origin HTTPS front end that
+  starts in seconds instead of rebuilding the UI on every boot, and direct
+  API/MCP passthrough for AI agents.
+developer: Chartbrew (Depomo Ltd)
+website: https://chartbrew.com
+dependencies: []
+repo: https://github.com/chartbrew/chartbrew
+support: https://github.com/chartbrew/chartbrew/issues
+port: 4018
+requiresHttps: true
+gallery:
+  - https://chartbrew-static.b-cdn.net/banners/hero-v4.webp
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: CB_SITE_URL
+    services:
+      - server
+    note: >-
+      Canonical HTTPS URL used for MCP/OAuth metadata, emails, and integration
+      callbacks. Leave unset for https://<device>.local:4018, or set to your
+      Tailscale URL (e.g. https://<node>.<tailnet>.ts.net:4018). Must start with
+      https://.
+  - name: CB_ALLOW_PRIVATE_NETWORK_CALLS
+    default: "true"
+    services:
+      - server
+    note: >-
+      Allow data sources on private networks (LAN, Tailscale, this Umbrel).
+      Set to false to block them as upstream does by default.
+  - name: CB_OPENAI_API_KEY
+    services:
+      - server
+    note: >-
+      Optional OpenAI API key for the AI assistant, SQL generation, and
+      AI-built charts and dashboards.
+  - name: CB_OPENAI_MODEL
+    default: "gpt-5.4-mini"
+    services:
+      - server
+    note: >-
+      Optional OpenAI model ID for the AI assistant (defaults to gpt-5.4-mini).
+  - name: CB_MAIL_HOST
+    services:
+      - server
+    note: Optional SMTP host for invites, password resets, and snapshot emails.
+  - name: CB_MAIL_PORT
+    default: "465"
+    services:
+      - server
+    note: SMTP port (465 for implicit TLS, 587 with CB_MAIL_SECURE=false).
+  - name: CB_MAIL_SECURE
+    default: "true"
+    services:
+      - server
+    note: Use implicit TLS for SMTP (true for port 465, false for 587/STARTTLS).
+  - name: CB_MAIL_USER
+    services:
+      - server
+    note: SMTP username.
+  - name: CB_MAIL_PASS
+    services:
+      - server
+    note: SMTP password.
+  - name: CB_ADMIN_MAIL
+    services:
+      - server
+    note: Sender address for all emails Chartbrew sends.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

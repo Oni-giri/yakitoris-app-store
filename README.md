@@ -19,6 +19,7 @@ https://github.com/Oni-giri/yakitoris-app-store
 | [Anki Sync Hub](https://github.com/Oni-giri/anki-sync-hub) | `yakitori-anki-sync-hub` | Automation | `8723` | `amd64`, `arm64` | Private Anki sync service with a browser admin UI, REST API, and scoped MCP server |
 | [ARTEX](https://github.com/BaaRai/ARTEX) | `yakitori-artex` | Developer | `8787` | `amd64` | Autonomous multi-agent penetration testing platform with evidence-bound findings |
 | [BrowserPier](https://github.com/Oni-giri/browser-pier) | `yakitori-browserpier` | Developer | `7436` (`+7438` WebRTC) | `amd64`, `arm64` | Persistent Chromium browser profiles your AI agents can borrow via CDP, REST, or MCP |
+| [Chartbrew](https://github.com/chartbrew/chartbrew) | `yakitori-chartbrew` | Developer | `4018` (HTTPS) | `amd64`, `arm64` | Live dashboards and reports from SQL/NoSQL databases and APIs, with an AI assistant, Data API, and MCP server |
 | [ChartDB](https://github.com/chartdb/chartdb) | `yakitori-chartdb` | Developer | `8754` (HTTPS) | `amd64`, `arm64` | Browser-based ER database diagram editor with Smart Query, SQL DDL, and DBML import/export |
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `yakitori-deepseek-harness` | AI | `8734` | `amd64`, `arm64` | DeepSeek's open-source agent harness in your browser with local workspace storage |
 | [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Productivity | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
@@ -32,5 +33,5 @@ https://github.com/Oni-giri/yakitoris-app-store
 
 ## Notes
 
-- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartdb`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartbrew`, `yakitori-chartdb`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
 - **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.

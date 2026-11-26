@@ -1,0 +1,152 @@
+# Chartbrew 6.0.1, adapted for umbrelOS 2.0+:
+#   1. One origin instead of upstream's two. `web` runs web/server.cjs (Node.js
+#      core only) from the same image: it serves the prebuilt UI and proxies
+#      /api/* (prefix stripped, WebSockets included) plus the root-level MCP
+#      endpoints (/mcp, /.well-known/oauth-*, /oauth/{authorize,token,register,
+#      revoke}) to `server`. It patches the bundle's baked localhost:4018/4019
+#      URLs to the browser's own origin, so the UI works from <device>.local, a
+#      Tailscale IP, or a .ts.net name, and it replaces upstream's entrypoint,
+#      which re-runs a multi-minute `vite build` and `npx serve` (fetched from
+#      npm) on every start.
+#   2. Served over Umbrel's HTTPS proxy (requiresHttps). Chartbrew's MCP server
+#      refuses to start its OAuth routes without a public https:// URL.
+#   3. /api and the MCP/OAuth endpoints bypass Umbrel's browser login so API
+#      keys, the Data API, and MCP clients authenticate with Chartbrew's own
+#      tokens. Signups close after the first account (CB_RESTRICT_SIGNUP=1).
+#   4. Encryption keys, legacy secret, BullMQ dashboard password, and database
+#      and Redis passwords are derived per device in exports.sh. Without them
+#      Chartbrew mints random keys into the container's /code/.env, which would
+#      be lost (with every stored credential) on the next container recreation.
+#   5. PostgreSQL, Redis (AOF), and uploaded files persist under APP_DATA_DIR/data.
+#   6. All images are pinned to release tags and multi-architecture digests.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-chartbrew_web_1
+      APP_PORT: 4018
+      # API keys, the Data API, MCP clients, and OAuth token exchanges cannot
+      # complete Umbrel's login page; Chartbrew authenticates them itself.
+      # Exact prefixes plus /* so bare probes do not 302 to app-auth.
+      PROXY_AUTH_WHITELIST: "/api,/api/*,/mcp,/.well-known/oauth-authorization-server,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/oauth/authorize,/oauth/token,/oauth/register,/oauth/revoke"
+      # Keep AI assistant streams, socket.io, and long dataset queries open.
+      PROXY_TIMEOUT: 3600000
+
+  web:
+    image: razvanilin/chartbrew:6.0.1@sha256:65d2fedffc0df3a928a0cb5ad7605c9a4d5bb00cf279b2fa142574417390be1e
+    restart: on-failure
+    init: true
+    stop_grace_period: 15s
+    depends_on:
+      server:
+        condition: service_started
+    entrypoint: ["node", "/umbrel/web/server.cjs"]
+    environment:
+      CB_WEB_PORT: "4018"
+      CB_API_UPSTREAM_HOST: yakitori-chartbrew_server_1
+      CB_API_UPSTREAM_PORT: "4019"
+    volumes:
+      # Directory mount (not a single file) so app updates pick up a new script.
+      - ${APP_DATA_DIR}/web:/umbrel/web:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4018/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  server:
+    image: razvanilin/chartbrew:6.0.1@sha256:65d2fedffc0df3a928a0cb5ad7605c9a4d5bb00cf279b2fa142574417390be1e
+    restart: on-failure
+    init: true
+    stop_grace_period: 1m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    working_dir: /code/server
+    # Upstream's entrypoint.sh also rebuilds and serves the UI; `web` does that.
+    # The API derives its public URLs from CB_SITE_URL, and Chartbrew's MCP OAuth
+    # module throws at start-up unless that URL is https://.
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        site="$${CB_SITE_URL%/}"
+        case "$$site" in
+          https://*) ;;
+          *) echo "CB_SITE_URL must be an https:// URL (got '$$site'); Chartbrew's MCP server refuses plain HTTP." >&2; exit 1 ;;
+        esac
+        export VITE_APP_CLIENT_HOST="$$site"
+        export VITE_APP_API_HOST="$$site/api"
+        exec node index.js
+    environment:
+      NODE_ENV: production
+      CB_SITE_URL: ${APP_CHARTBREW_SITE_URL}
+      CB_API_HOST: 0.0.0.0
+      CB_API_PORT: "4019"
+      CB_DB_DIALECT: postgres
+      CB_DB_HOST: yakitori-chartbrew_postgres_1
+      CB_DB_PORT: "5432"
+      CB_DB_NAME: chartbrew
+      CB_DB_USERNAME: chartbrew
+      CB_DB_PASSWORD: ${APP_CHARTBREW_DB_PASSWORD}
+      CB_REDIS_HOST: yakitori-chartbrew_redis_1
+      CB_REDIS_PORT: "6379"
+      CB_REDIS_PASSWORD: ${APP_CHARTBREW_REDIS_PASSWORD}
+      CB_ENCRYPTION_KEY: ${APP_CHARTBREW_ENCRYPTION_KEY}
+      CB_SECRET: ${APP_CHARTBREW_SECRET}
+      CB_BULLMQ_USERNAME: chartbrew
+      CB_BULLMQ_PASSWORD: ${APP_CHARTBREW_BULLMQ_PASSWORD}
+      # The first account can always sign up; everyone after needs an invite.
+      CB_RESTRICT_SIGNUP: "1"
+      # Upstream blocks data sources on private ranges (192.168/16, 10/8,
+      # 100.64/10 Tailscale, ...) as SSRF protection. On a home server those are
+      # where the databases live, so they are allowed by default here; set to
+      # "false" in the app's settings to restore upstream's behavior.
+      CB_ALLOW_PRIVATE_NETWORK_CALLS: "true"
+    volumes:
+      - ${APP_DATA_DIR}/data/uploads:/code/server/uploads
+    healthcheck:
+      # The image has no curl/wget; Node 22's fetch is enough. First boot runs
+      # every database migration before the API starts listening.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4019/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
+  postgres:
+    image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+    restart: on-failure
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: chartbrew
+      POSTGRES_PASSWORD: ${APP_CHARTBREW_DB_PASSWORD}
+      POSTGRES_DB: chartbrew
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chartbrew -d chartbrew"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    restart: on-failure
+    stop_grace_period: 30s
+    # BullMQ needs the default `noeviction` policy; AOF keeps queued jobs.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${APP_CHARTBREW_REDIS_PASSWORD}
+      REDISCLI_AUTH: ${APP_CHARTBREW_REDIS_PASSWORD}
+    volumes:
+      - ${APP_DATA_DIR}/data/redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
