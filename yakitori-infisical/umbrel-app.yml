@@ -1,0 +1,87 @@
+manifestVersion: 2.0
+id: yakitori-infisical
+storage:
+  dataRoot: data
+category: developer
+name: Infisical
+version: "0.167.15"
+tagline: Secrets, PKI certificates, KMS, and Agent Vault for teams and AI agents
+icon: https://avatars.githubusercontent.com/u/107880645?s=512&v=4
+description: >-
+  Infisical is an open-source secrets, internal PKI, KMS, privileged access, and
+  AI agent credential management platform. Centralize API keys, environment
+  variables, dynamic secrets, X.509 certificates, machine identities, and Agent
+  Vault sessions on your Umbrel instead of scattering plaintext `.env` files
+  across repositories and agent workspaces.
+
+
+  This package runs Infisical's standalone server alongside PostgreSQL and
+  Redis with uniquely derived per-device encryption and signing keys, and
+  disables outbound telemetry, Contentful announcements, and background GitHub
+  update checks by default. On first launch, create your instance administrator
+  account and initial organization; self-service sign-up closes automatically
+  once setup completes, and SMTP or SSO can be configured later from the Server
+  Admin console.
+
+
+  umbrelOS 2.0 or newer is required. Open Infisical over HTTPS via Umbrel's
+  launch button (`https://<device>.local:8311`), your Tailscale IP
+  (`https://100.x.y.z:8311`), or a `tailscale serve` `.ts.net` URL so `Secure`
+  session cookies work. Browser pages stay behind Umbrel's login, while `/api/*`
+  (including the Infisical CLI, SDKs, `@infisical/mcp`, machine identities,
+  Agent Vault under `/api/v1/agent-vault/*`, ACME, OIDC discovery, and SCIM),
+  `/secret-scanning/webhooks/*`, `/.well-known/est/*`, and `/scep/*` bypass
+  Umbrel's login and authenticate directly with Infisical's own tokens,
+  signatures, or certificates. To bind WebAuthn passkeys, SSO callbacks, and
+  generated links to a Tailscale `.ts.net` domain instead of `<device>.local`,
+  set `SITE_URL` in this app's settings.
+
+
+  Shared-secret browser pages (`/shared/secret/*`) remain behind Umbrel's login
+  by default; to let external recipients open shared links without an Umbrel
+  account, disable "Require Umbrel login" in this app's settings (Infisical
+  still protects all private pages and APIs with its own accounts).
+
+
+  Good to know: when connecting the Infisical CLI, SDKs, or `@infisical/mcp`
+  against Umbrel's `.local` certificate, trust your Umbrel local CA on the
+  client machine (or pass it via `NODE_EXTRA_CA_CERTS` / `SSL_CERT_FILE`).
+  Because umbrelOS 2.0's HTTPS ingress forwards to the app gateway over
+  loopback, Infisical sees `127.0.0.1` as the client IP over HTTPS—avoid
+  configuring per-client IP allowlists on projects or machine identities, and
+  note that client-certificate mTLS headers cannot be terminated at Umbrel's
+  proxy.
+releaseNotes: >-
+  Initial Umbrel package of Infisical 0.167.15 (amd64 and arm64), with
+  per-device 256-bit KMS root key derivation, HTTPS cookie/WebAuthn support on
+  umbrelOS 2.0+, and direct API/CLI/Agent Vault proxy passthrough.
+developer: Infisical Inc.
+website: https://infisical.com
+dependencies: []
+repo: https://github.com/Infisical/infisical
+support: https://github.com/Infisical/infisical/issues
+port: 8311
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/Infisical/infisical/v0.167.15/img/infisical_github_repo4.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: SITE_URL
+    services:
+      - backend
+    note: >-
+      Canonical HTTPS URL used for WebAuthn passkeys, OAuth/SSO callbacks,
+      invite/share links, and ACME/OIDC metadata. Leave unset for
+      https://<device>.local:8311, or set to your Tailscale URL (e.g.
+      https://<node>.<tailnet>.ts.net:8311).
+  - name: ENCRYPTION_KEY
+    services:
+      - backend
+    note: >-
+      Leave unset for normal operation (this package derives a 256-bit
+      ROOT_ENCRYPTION_KEY automatically). Set this only when applying a 32-char
+      hex key generated in Infisical's Admin > Encryption rotation UI.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store
