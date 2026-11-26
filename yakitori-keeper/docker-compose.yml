@@ -1,0 +1,80 @@
+# Keeper.sh 2.34.5 "standalone" image (web UI, API, cron, worker, MCP server,
+# PostgreSQL 17, Redis, and Caddy under s6-overlay), adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) at one canonical
+#      origin (exports.sh). better-auth marks session cookies Secure for an
+#      https BETTER_AUTH_URL, and MCP, OAuth callbacks, and iCal feed links are
+#      built from it.
+#   2. Umbrel's gateway talks to the Keeper web server on :3000 directly, not to
+#      the image's own Caddy on :80. That is upstream's keeper-services layout:
+#      the web server itself proxies /api to the API and /mcp to the MCP server.
+#      Bypassing Caddy keeps the gateway's X-Forwarded-Proto: https intact;
+#      Caddy would overwrite it with http, and Keeper would then advertise an
+#      http:// MCP resource that MCP clients reject against the https token
+#      audience.
+#   3. Only the REST API (/api/v1, API tokens), iCal feed subscriptions
+#      (/api/cal, unguessable per-feed token), MCP, and the OAuth discovery,
+#      registration, and token endpoints MCP clients call bypass Umbrel's login.
+#      Keeper authenticates each of them itself. Sign-up, sign-in, and every
+#      page stay behind Umbrel's login, because the self-hosted build lets
+#      anyone who reaches it create an account.
+#   4. PostgreSQL data persists under APP_DATA_DIR/data/postgres. Login sessions
+#      and OAuth/MCP grants live in PostgreSQL. Redis only holds the sync job
+#      queue, locks, and short-lived OAuth state, which cron rebuilds every
+#      minute, so it is deliberately not persisted.
+#   5. Per-device BETTER_AUTH_SECRET and ENCRYPTION_KEY come from the Umbrel
+#      seed in exports.sh. The embedded PostgreSQL listens on 127.0.0.1 inside
+#      the container only.
+#   6. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-keeper_web_1
+      APP_PORT: 3000
+      # REST API clients (kpr_ tokens), calendar apps polling iCal feeds, and
+      # MCP clients (Claude, Cursor, ...) cannot complete Umbrel's login page.
+      # The MCP OAuth authorize and consent pages are opened in your browser
+      # and stay behind Umbrel's login. Include each exact path and its /*
+      # wildcard so a bare prefix probe does not 302 to app-auth.
+      PROXY_AUTH_WHITELIST: "/api/v1,/api/v1/*,/api/cal/*,/mcp,/mcp/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/openid-configuration,/.well-known/openid-configuration/*,/api/auth/.well-known/*,/api/auth/jwks,/api/auth/oauth2/register,/api/auth/oauth2/token,/api/auth/oauth2/revoke,/api/auth/oauth2/introspect,/api/auth/oauth2/userinfo"
+      # Keeper.sh's hosted feedback intake. It takes no token, and self-hosted
+      # MCP servers send feedback to keeper.sh, not here, so keep it behind
+      # Umbrel's login instead of open to the LAN.
+      PROXY_AUTH_BLACKLIST: "/api/v1/agent-feedback,/api/v1/agent-feedback/*"
+
+  web:
+    image: ghcr.io/ridafkih/keeper-standalone:2.34.5@sha256:7b54c46b5ab7c0cc032b71620bd9e9d8a2e6d0ba83db1eef50573515a427fa71
+    restart: on-failure
+    # Runs as root deliberately: s6-overlay's /init must be PID 1 as root to
+    # supervise. It then drops the Keeper services to the image's keeper user
+    # (uid 10001), PostgreSQL to postgres (after chowning PGDATA, which Umbrel
+    # creates as uid 1000), and leaves only Caddy and loopback-only Redis as
+    # root. Do not add `user:` or `init: true`; either stops s6 from booting.
+    # s6-overlay stops the Keeper services first and PostgreSQL last; give
+    # PostgreSQL time to shut down cleanly instead of being SIGKILLed.
+    stop_grace_period: 1m
+    environment:
+      BETTER_AUTH_URL: ${APP_KEEPER_URL}
+      BETTER_AUTH_SECRET: ${APP_KEEPER_AUTH_SECRET}
+      ENCRYPTION_KEY: ${APP_KEEPER_ENCRYPTION_KEY}
+      # Upstream's default. Local CalDAV and ICS sources, such as Baikal or
+      # Nextcloud on this Umbrel, need private addresses to stay reachable.
+      BLOCK_PRIVATE_RESOLUTION: "false"
+      # Upstream's default: the MCP send_feedback tool reports tool problems to
+      # the Keeper.sh team (no calendar data, tokens, or hostname). Each user can
+      # also turn it off under Settings.
+      AGENT_FEEDBACK_DISABLED: "false"
+      # First boot runs initdb plus 100+ migrations; later updates can run long
+      # data migrations. Upstream's 60s limit would fail the container on slow
+      # devices such as a Raspberry Pi, so wait for start-up without a limit.
+      S6_CMD_WAIT_FOR_SERVICES_MAXTIME: "0"
+      # s6's 3s defaults would SIGKILL PostgreSQL mid-shutdown; both stay within
+      # stop_grace_period above.
+      S6_SERVICES_GRACETIME: "30000"
+      S6_KILL_GRACETIME: "10000"
+      # Google, Microsoft, OIDC, and TRUSTED_ORIGINS are unset by default and
+      # can be set from the app's Environment settings.
+    volumes:
+      - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
+    # The image's own HEALTHCHECK (curl through its internal Caddy, start
+    # period 90s) is kept.

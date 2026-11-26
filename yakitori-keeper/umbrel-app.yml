@@ -1,0 +1,186 @@
+manifestVersion: 2.0
+id: yakitori-keeper
+storage:
+  dataRoot: data
+category: automation
+name: Keeper.sh
+version: "2.34.5"
+tagline: Keep all your calendars in sync, with an API and MCP for AI agents
+icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-keeper/icon.svg
+description: >-
+  Keeper.sh is an open-source calendar syncing engine. It pulls events from
+  iCloud, Fastmail, any CalDAV server, Google Calendar, Outlook, and read-only
+  iCal/ICS links, then pushes them to one or more destination calendars, so a
+  meeting booked on your work calendar blocks the same slot on your personal
+  one. Deletions follow the source, and cleanup only ever touches events
+  Keeper.sh created itself.
+
+
+  Each source has privacy controls that strip titles, descriptions, and
+  locations, or replace the title with a template such as
+  `{{calendar_name}}`. Keeper also publishes combined iCal feeds you
+  can subscribe to from any calendar app, a REST API, and an MCP server so AI
+  assistants can read your calendars, find free time, create events, and RSVP.
+  Self-hosting includes every Pro feature: unlimited accounts and mappings,
+  event filters, and one-minute sync.
+
+
+  This package runs upstream's all-in-one image (web UI, API, sync workers,
+  MCP server, PostgreSQL 17, and Redis) with a per-device session secret and
+  credential encryption key.
+
+
+  🛠️ SET-UP INSTRUCTIONS
+
+
+  Open Keeper.sh and **Sign up** with a username and password (the sign-in
+  page links to it). There is no email or password reset, so keep the password
+  somewhere safe. Then connect your calendars with **Add a calendar**.
+
+
+  iCloud, Fastmail, CalDAV, and iCal links work straight away; use an
+  app-specific password for iCloud and Fastmail. CalDAV servers on your network
+  (Baïkal, Nextcloud, Radicale) are reachable too.
+
+
+  Google and Outlook need your own OAuth apps: set `GOOGLE_CLIENT_ID` and
+  `GOOGLE_CLIENT_SECRET` (or the `MICROSOFT_*` pair) in this app's settings,
+  and register the redirect URIs `<url>/api/sources/callback/google` and
+  `<url>/api/auth/callback/google` (for Outlook,
+  `<url>/api/sources/callback/outlook` and `<url>/api/auth/callback/microsoft`),
+  where `<url>` is `https://<device>.local:8792` or your `BETTER_AUTH_URL`. Google
+  only accepts redirect URIs on a public domain, so for Google set
+  `BETTER_AUTH_URL` to an HTTPS name you control, such as a Tailscale `.ts.net`
+  address.
+
+
+  🤖 AI ASSISTANTS
+
+
+  Point an MCP client (Claude, Cursor, ...) at `https://<device>.local:8792/mcp`
+  and approve access in your browser. For scripts, create an API token under
+  **Settings → API Tokens** and call `/api/v1` with
+  `Authorization: Bearer kpr_...`.
+
+
+  ⚠️ GOOD TO KNOW
+
+
+  umbrelOS 2.0 or newer is required. Open Keeper.sh over HTTPS: sign-in uses
+  Secure cookies and checks the page origin. To use it by IP address or another
+  hostname, add that origin to `TRUSTED_ORIGINS`, or set `BETTER_AUTH_URL` if it
+  should be the main address.
+
+
+  Pages, sign-up, and sign-in stay behind Umbrel's login, while the REST API
+  (`/api/v1`), iCal feeds (`/api/cal`), and MCP (`/mcp` and its OAuth
+  endpoints) bypass it and are authenticated by Keeper itself. Calendar apps
+  on other devices must trust Umbrel's local certificate to subscribe to an
+  `https://` feed; the same port also serves the feed over plain `http://`.
+
+
+  Back up this app's data: the database holds your connected accounts, and
+  stored CalDAV passwords are encrypted with a key tied to this Umbrel.
+releaseNotes: >-
+  Initial Umbrel package of Keeper.sh 2.34.5 (amd64 and arm64): the all-in-one
+  image with PostgreSQL 17 and Redis, HTTPS sessions on umbrelOS 2.0+, direct
+  REST API, iCal feed, and MCP passthrough, and the built-in MCP server enabled
+  for AI assistants.
+developer: Rida F'kih
+website: https://www.keeper.sh
+dependencies: []
+repo: https://github.com/ridafkih/keeper.sh
+support: https://github.com/ridafkih/keeper.sh/issues
+port: 8792
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/open-graph.png
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/product/dashboard-light.png
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/product/dashboard-dark.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: BETTER_AUTH_URL
+    services:
+      - web
+    note: >-
+      Keeper's main address, used for sign-in cookies, OAuth redirect URIs, iCal
+      feed links, and the MCP URL. Leave unset for https://<device>.local:8792, or
+      set an HTTPS URL such as https://<node>.<tailnet>.ts.net:8792.
+  - name: TRUSTED_ORIGINS
+    services:
+      - web
+    note: >-
+      Extra comma-separated origins allowed to sign in, e.g.
+      https://192.168.1.20:8792. BETTER_AUTH_URL is always trusted. Without this,
+      opening Keeper by IP or another hostname fails with "invalid origin".
+  - name: GOOGLE_CLIENT_ID
+    services:
+      - web
+    note: >-
+      Google OAuth client ID for Google Calendar and Google sign-in. Needs the
+      calendar.events, calendar.calendarlist.readonly, and userinfo.email scopes.
+  - name: GOOGLE_CLIENT_SECRET
+    services:
+      - web
+    note: >-
+      Google OAuth client secret, paired with GOOGLE_CLIENT_ID.
+  - name: MICROSOFT_CLIENT_ID
+    services:
+      - web
+    note: >-
+      Microsoft Entra app (client) ID for Outlook calendars and Microsoft
+      sign-in. Needs the Calendars.ReadWrite, User.Read, and offline_access
+      permissions.
+  - name: MICROSOFT_CLIENT_SECRET
+    services:
+      - web
+    note: >-
+      Microsoft client secret value, paired with MICROSOFT_CLIENT_ID.
+  - name: OIDC_ISSUER_URL
+    services:
+      - web
+    note: >-
+      Optional single sign-on through Authentik, Keycloak, Pocket ID, and others:
+      the issuer URL exactly as the provider publishes it. Also set OIDC_CLIENT_ID
+      and OIDC_CLIENT_SECRET; the redirect URI is <url>/api/auth/oauth2/callback/oidc.
+  - name: OIDC_CLIENT_ID
+    services:
+      - web
+    note: >-
+      Client ID registered with your OIDC provider.
+  - name: OIDC_CLIENT_SECRET
+    services:
+      - web
+    note: >-
+      Client secret registered with your OIDC provider.
+  - name: OIDC_PROVIDER_NAME
+    services:
+      - web
+    note: >-
+      Label on the single sign-on button, e.g. Pocket ID. Defaults to SSO.
+  - name: BLOCK_PRIVATE_RESOLUTION
+    default: "false"
+    options:
+      - "false"
+      - "true"
+    services:
+      - web
+    note: >-
+      Refuse CalDAV servers and iCal links that resolve to LAN, loopback, or
+      Docker addresses, to block SSRF. Leave false to sync with calendars hosted
+      on your network, such as Baïkal or Nextcloud on this Umbrel.
+  - name: AGENT_FEEDBACK_DISABLED
+    default: "false"
+    options:
+      - "false"
+      - "true"
+    services:
+      - web
+    note: >-
+      Set true to remove the MCP send_feedback tool for every user. When false,
+      AI agents may send the Keeper.sh team short tool-problem reports (no
+      calendar data, tokens, or hostname); users can still opt out in Settings.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store
