@@ -1,0 +1,77 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-tirreno_server_1
+      APP_PORT: 80
+      # Everything stays behind Umbrel's browser login except the ingest
+      # endpoint, which is called by apps and VPS hosts that cannot complete a
+      # login page. They authenticate with their own API key instead.
+      # Exact prefix plus /* so a bare /sensor probe does not 302 to app-auth.
+      PROXY_AUTH_WHITELIST: "/sensor,/sensor/*"
+
+  server:
+    image: tirreno/tirreno:v0.10.1@sha256:a74e07b38eceb206496c6da58c66ca68f78ccf010428713ec0b2a19f09473a2a
+    restart: unless-stopped
+    # cron forks a PHP process every 10 minutes; init reaps what it leaves behind.
+    init: true
+    volumes:
+      # config.local.ini lives here and holds the generated password PEPPER.
+      # Losing this volume invalidates every stored password hash.
+      - ${APP_DATA_DIR}/data/config:/var/www/html/config/local
+      - ${APP_DATA_DIR}/secrets:/run/secrets:ro
+    environment:
+      # Host list used to build absolute URLs; see exports.sh.
+      SITE: ${APP_TIRRENO_SITE}
+      # Umbrel's proxy terminates plain HTTP; there is no TLS in this container.
+      FORCE_HTTPS: "false"
+      # cron logs to /var/log/cron.log unless told otherwise, which is invisible
+      # in Umbrel's app log view.
+      LOG_TO_STDOUT: "true"
+      PHP_MEMORY_LIMIT: "256M"
+    depends_on:
+      db:
+        condition: service_healthy
+    # The upstream ENTRYPOINT bootstraps the schema from DATABASE_URL when
+    # config.local.ini is absent, and needs install/install.sql to do it. It is
+    # therefore re-invoked here with a command that deletes the installer after
+    # bootstrap: Umbrel's proxy cannot path-filter, and .htaccess explicitly lets
+    # /install/index.php through, so removing it is the only way to keep it off
+    # the web. The database password is read from the mounted secret so it never
+    # lands in the compose file or in `docker inspect`.
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        export DATABASE_URL="postgres://tirreno:$$(cat /run/secrets/db-password)@db:5432/tirreno"
+        exec /usr/local/bin/docker-entrypoint.sh sh -c 'rm -rf /var/www/html/install && cron && apache2-foreground'
+    healthcheck:
+      # Any HTTP response from Apache means the container is serving; /sensor/
+      # and /login both answer without credentials.
+      test: curl -sS -o /dev/null http://127.0.0.1/ || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  db:
+    image: postgres:15@sha256:91b9edc40277faf94bc1e3d7ae621b185fa70f3099b94309c4731a8296114870
+    restart: unless-stopped
+    # Matches the data-dir owner; the official image then skips its root-only
+    # chown/initdb-as-postgres path and initdb runs as this uid.
+    user: "1000:1000"
+    volumes:
+      - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+      - ${APP_DATA_DIR}/secrets:/run/secrets:ro
+    environment:
+      POSTGRES_DB: tirreno
+      POSTGRES_USER: tirreno
+      # Read once, at initdb. A mounted file keeps the password out of the
+      # environment and stable across app updates.
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tirreno -d tirreno"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

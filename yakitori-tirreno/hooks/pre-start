@@ -1,0 +1,22 @@
+#!/bin/sh
+# Runs before the app's containers start. Generates the database password once
+# per device and keeps it under ${APP_DATA_DIR}/secrets, so it survives app
+# updates and never appears in docker-compose.yml or `docker inspect`.
+#
+# tirreno's own password pepper is separate: the image's entrypoint mints it into
+# data/config/config.local.ini on first boot and ignores any PEPPER env var, so
+# that directory is the only copy and must be backed up with the database.
+
+set -eu
+
+APP_DATA_DIR="${APP_DATA_DIR:-$(readlink -f "$(dirname "$0")/..")}"
+
+mkdir -p "${APP_DATA_DIR}/secrets"
+chmod 755 "${APP_DATA_DIR}/secrets"
+
+file="${APP_DATA_DIR}/secrets/db-password"
+if [ ! -s "$file" ]; then
+  umask 077
+  openssl rand -hex 32 >"$file"
+fi
+chmod 644 "$file"

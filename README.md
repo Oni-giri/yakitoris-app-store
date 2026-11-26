@@ -24,8 +24,9 @@ https://github.com/Oni-giri/yakitoris-app-store
 | [Infisical](https://github.com/Infisical/infisical) | `yakitori-infisical` | Developer | `8311` (HTTPS) | `amd64`, `arm64` | Self-hosted secrets, internal PKI, KMS, and machine/agent credential vault |
 | [It's a Plan](https://github.com/croffasia/itsaplan) | `yakitori-itsaplan` | Files | `8743` (HTTPS) | `amd64`, `arm64` | Self-hosted issue tracker, docs, boards, and workflows for teams and AI agents |
 | [Octop](https://github.com/TencentCloud/Octop) | `yakitori-octop` | AI | `8105` | `amd64`, `arm64` | Multi-user, multi-agent AI assistant with web dashboard, IM channels, RAG, and cron |
+| [tirreno](https://github.com/tirrenotechnologies/tirreno) | `yakitori-tirreno` | Developer | `8585` | `amd64`, `arm64` | In-application security: event ingest over an API key, risk scoring, review queue, and audit trail |
 
 ## Notes
 
-- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-doop`, `yakitori-infisical`, `yakitori-itsaplan`) require **umbrelOS 2.0 or newer**.
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-doop`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
 - **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.

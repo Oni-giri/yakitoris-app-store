@@ -1,0 +1,71 @@
+manifestVersion: 2
+storage:
+  dataRoot: data
+id: yakitori-tirreno
+category: developer-tools
+name: tirreno
+version: "0.10.1"
+tagline: In-app security — event tracking, risk scoring and threat detection
+icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-tirreno/icon.webp
+description: >-
+  tirreno is a self-hosted security framework that watches what happens *inside*
+  your application instead of at the network edge. Apps post events to it
+  (logins, page views, searches, field edits) and it scores each user, agent or
+  API key against a rule engine, surfacing account takeover, scraping, business
+  logic abuse and compromised non-human identities.
+
+
+  🛠️ SET-UP INSTRUCTIONS
+
+
+  Open the app and go to **/signup** to create your admin account — signup closes
+  after the first account exists, so it is the only one you get. You will also
+  name the first API key; that key is what your applications authenticate with.
+
+
+  Sending events: the dashboard shows your ingest URL,
+  `http://<this-host>:8585/sensor/`. Post form-encoded events with the key in an
+  `Api-Key` header. Official trackers exist for Node.js, Python, PHP and
+  WordPress, and plain `curl` works too. Each API key has its own event stream
+  and Logbook, so create one per source.
+
+
+  ⚠️ REMOTE SOURCES
+
+
+  If a VPS or another machine has to report events, put both ends on your
+  tailnet (the Tailscale app on this Umbrel already does that) and post to
+  `http://<this-umbrel's-tailnet-name>:8585/sensor/`. Do not port-forward this
+  app: it stores IP addresses, emails and names.
+
+
+  Enrichment (VPN/Tor flags, breach data, cross-install profile counts) is
+  opt-in and stays fully offline until you add an enrichment key from tirreno.
+
+
+  Do not delete `app-data/yakitori-tirreno/data/config` — it holds the password
+  pepper, and losing it invalidates every stored password hash.
+developer: tirreno technologies sàrl
+website: https://www.tirreno.com
+repo: https://github.com/tirrenotechnologies/tirreno
+support: https://github.com/tirrenotechnologies/tirreno/issues
+dependencies: []
+port: 8585
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Yakitori
+submission: ""
+releaseNotes: >-
+  First release of tirreno 0.10.1 for umbrelOS.
+
+
+  Runs the upstream image unmodified: Apache serves the dashboard and the ingest
+  endpoint, and the image's own cron daemon runs tirreno's job queue every 10
+  minutes, so risk scores, totals and retention need no extra container.
+
+
+  The web installer is removed at start-up; the schema is created from the
+  database URL on first boot instead, and the database password is generated
+  per-device under `secrets/` rather than stored in the compose file.
