@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: Act-CI
-version: "0.1.1"
+version: "0.1.2"
 tagline: Self-hosted GitHub Actions CI powered by nektos/act
 description: >-
   ⚠️ Security & host-access disclosure: Act-CI runs a privileged
@@ -34,7 +34,10 @@ description: >-
 
   - Connect MCP clients to `/mcp` or call `/api/v1/*` with your bearer token,
   and audit every read and write on the append-only Activity page.
-releaseNotes: ""
+releaseNotes: >-
+  Reworks the entire web interface with the Omakase design system: light
+  bloomed canvas, glass sidebar, status glyphs, ratio bars, command palette
+  (⌘K), and live-updating run step views.
 developer: Yakitori
 website: https://github.com/Oni-giri/act-ci
 dependencies: []
@@ -45,6 +48,6 @@ gallery: []
 path: ""
 defaultUsername: ""
 defaultPassword: ""
-icon: https://raw.githubusercontent.com/Oni-giri/act-ci/v0.1.1/assets/icon.svg
+icon: https://raw.githubusercontent.com/Oni-giri/act-ci/v0.1.2/assets/icon.svg
 submitter: Yakitori
 submission: https://github.com/Oni-giri/yakitoris-app-store
