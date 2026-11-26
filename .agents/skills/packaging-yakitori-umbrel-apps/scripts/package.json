@@ -1,0 +1,9 @@
+{
+  "name": "yakitori-umbrel-app-checker",
+  "private": true,
+  "type": "module",
+  "description": "Store-specific checks for Yakitori's Umbrel community app store. Run through check.sh.",
+  "dependencies": {
+    "yaml": "2.8.1"
+  }
+}

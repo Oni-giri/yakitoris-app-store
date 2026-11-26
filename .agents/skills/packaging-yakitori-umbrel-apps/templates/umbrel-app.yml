@@ -1,0 +1,60 @@
+manifestVersion: 2.0
+id: yakitori-example
+storage:
+  dataRoot: data
+category: developer
+name: Example
+version: "1.4.2"
+tagline: Replace with one line that says what the app does
+icon: https://raw.githubusercontent.com/example-org/example/v1.4.2/assets/icon.svg
+description: >-
+  What Example is and why someone would run it on their Umbrel. One short
+  paragraph, in plain words.
+
+
+  This package runs Example's web app and PostgreSQL, with per-device secrets
+  derived by Umbrel.
+
+
+  🛠️ SET-UP INSTRUCTIONS
+
+
+  Open Example and create the first account; it becomes the administrator.
+
+
+  🤖 AI ASSISTANTS
+
+
+  Point an MCP client at `https://<device>.local:8790/mcp` and authenticate with
+  an API token from **Settings → API tokens**.
+
+
+  ⚠️ GOOD TO KNOW
+
+
+  umbrelOS 2.0 or newer is required. Every page stays behind Umbrel's login;
+  only `/mcp` and `/api/v1` bypass it, and Example authenticates both itself.
+releaseNotes: >-
+  Initial Umbrel package of Example 1.4.2 (amd64 and arm64), with PostgreSQL 17,
+  HTTPS sessions, and the built-in MCP server.
+developer: Example Org
+website: https://example.com
+dependencies: []
+repo: https://github.com/example-org/example
+support: https://github.com/example-org/example/issues
+port: 8790
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/example-org/example/v1.4.2/docs/screenshot.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: PUBLIC_URL
+    services:
+      - web
+    note: >-
+      Example's main address, used for links, OAuth redirects and the MCP URL.
+      Leave unset for https://<device>.local:8790, or set another https address.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

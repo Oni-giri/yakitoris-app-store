@@ -1,0 +1,68 @@
+# Example 1.4.2 (web app and PostgreSQL 17), adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's gateway at one canonical HTTPS origin (exports.sh),
+#      overridable with PUBLIC_URL in the app's settings (manifest environment:
+#      entries override the container variable of the same name).
+#   2. Only /mcp and /api/v1 bypass Umbrel's login. Example authenticates both
+#      with its own API tokens. Sign-up, admin pages and everything else stay
+#      behind Umbrel's login. (Audit notes: list what lives under each prefix.)
+#   3. Siblings are addressed by their Umbrel container names
+#      (yakitori-example_<service>_1): every app shares one Docker network, and
+#      a bare "db" would also resolve to other apps' databases.
+#   4. PostgreSQL persists under APP_DATA_DIR/data/db. Uploads persist under
+#      APP_DATA_DIR/data/uploads, owned by the image's uid 1000.
+#   5. Database password and session secret are derived per device in exports.sh.
+#   6. Telemetry is off. All images are pinned to release tags and multi-arch
+#      (amd64 + arm64) index digests.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-example_web_1
+      APP_PORT: 3000
+      # Exact path plus /* for each: /x/* does not match /x itself.
+      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*,/api/v1,/api/v1/*"
+
+  web:
+    image: ghcr.io/example-org/example:1.4.2@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    user: "1000:1000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://example:${APP_EXAMPLE_DB_PASSWORD}@yakitori-example_db_1:5432/example
+      SESSION_SECRET: ${APP_EXAMPLE_SESSION_SECRET}
+      PUBLIC_URL: ${APP_EXAMPLE_URL}
+      # The gateway sets X-Forwarded-For to 127.0.0.1 and X-Forwarded-Proto correctly.
+      TRUSTED_PROXIES: ${APP_EXAMPLE_TRUSTED_PROXIES}
+      DO_NOT_TRACK: "1"
+      HOME: /tmp
+    volumes:
+      - ${APP_DATA_DIR}/data/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  db:
+    image: postgres:17.6-alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: on-failure
+    # The official entrypoint starts as root, chowns PGDATA, then drops to postgres. Do not set user:.
+    stop_grace_period: 1m
+    environment:
+      POSTGRES_USER: example
+      POSTGRES_PASSWORD: ${APP_EXAMPLE_DB_PASSWORD}
+      POSTGRES_DB: example
+    volumes:
+      - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP: on first boot the image runs a socket-only server during initdb.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U example -d example"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s

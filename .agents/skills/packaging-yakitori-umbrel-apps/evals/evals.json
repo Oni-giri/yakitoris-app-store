@@ -1,0 +1,73 @@
+[
+  {
+    "id": "new-app-with-database",
+    "skills": ["packaging-yakitori-umbrel-apps"],
+    "query": "Package Vikunja (https://vikunja.io, self-hosted to-do app) for our Umbrel app store. Use PostgreSQL, not SQLite.",
+    "files": [],
+    "expected_behavior": [
+      "Creates yakitori-vikunja/ with umbrel-app.yml, docker-compose.yml, exports.sh and data/<dir>/.gitkeep for every bind-mount source",
+      "id is yakitori-vikunja, version is a quoted string matching the latest stable upstream release, icon and gallery are absolute https URLs pinned to a tag or SHA",
+      "Picks a manifest port that check.sh reports as free in both this store and the official store",
+      "Every image (vikunja and postgres) is tag@sha256 obtained from scripts/resolve-image.mjs and covers linux/amd64 and linux/arm64",
+      "The database host is yakitori-vikunja_db_1 (or <id>_<service>_1), never a bare service name",
+      "Postgres password and JWT secret come from derive_entropy with distinct labels in exports.sh; no literal secrets in compose",
+      "Postgres has a TCP pg_isready healthcheck with start_period and the app waits with condition: service_healthy; no user: on the postgres service",
+      "storage.dataRoot: data is declared and all durable state is under ${APP_DATA_DIR}/data/",
+      "Public URL is derived from DEVICE_DOMAIN_NAME and ${APP_PROXY_PORT:-<port>} and exposed as a manifest environment override",
+      "Runs scripts/check.sh yakitori-vikunja --check-images and reaches zero errors before declaring done",
+      "States clearly whether on-device testing was done; does not claim the app works from lint alone"
+    ]
+  },
+  {
+    "id": "compose-fix-needs-version-bump",
+    "skills": ["packaging-yakitori-umbrel-apps"],
+    "query": "In yakitori-daily-hub the MCP whitelist /mcp/* exposes Next.js server actions. Restrict it to exactly /mcp and ship the fix.",
+    "files": ["yakitori-daily-hub/"],
+    "expected_behavior": [
+      "Changes PROXY_AUTH_WHITELIST to the exact path(s) needed and explains why /mcp/* was dangerous",
+      "Bumps version (e.g. 0.2.7 -> 0.2.7-umbrel.1) because installed devices only receive compose changes on a version change",
+      "Rewrites releaseNotes for upgrading users and mentions the security fix",
+      "Runs scripts/check.sh yakitori-daily-hub --base origin/master and gets no update.version_not_bumped error",
+      "Verifies (or asks to verify on a device) that /mcp works without the Umbrel cookie and that /mcp/anything now redirects to Umbrel login"
+    ]
+  },
+  {
+    "id": "upstream-update-with-new-config-file",
+    "skills": ["packaging-yakitori-umbrel-apps"],
+    "query": "Update yakitori-chartbrew to the latest upstream release.",
+    "files": ["yakitori-chartbrew/"],
+    "expected_behavior": [
+      "Reads upstream release notes for every version between the packaged one and the target, not only the latest",
+      "Re-pins every changed image with scripts/resolve-image.mjs and keeps the Postgres major version unchanged",
+      "Notices that web/server.cjs is bind-mounted from a package file outside the update whitelist (package.frozen_mount) and moves it inline into compose or a top-level .template, or flags it explicitly to the user",
+      "Keeps service names, environment names and derive_entropy labels unchanged",
+      "Updates version and releaseNotes, runs check.sh with --base origin/master, and describes the update-path test (install shipped version, create data, update, verify)"
+    ]
+  },
+  {
+    "id": "review-existing-package",
+    "skills": ["packaging-yakitori-umbrel-apps"],
+    "query": "Review yakitori-doop for anything that could break on users' devices.",
+    "files": ["yakitori-doop/"],
+    "expected_behavior": [
+      "Runs scripts/check.sh yakitori-doop --check-images",
+      "Reports the bare @db:5432 hostname as a cross-app collision risk and gives the <id>_db_1 fix",
+      "Reports Postgres data and secrets outside data/ despite storage.dataRoot, and that hook-generated secrets are not reproducible",
+      "Reports the amd64-only wrapper image",
+      "Audits PROXY_AUTH_WHITELIST (/api/auth/*, /.well-known/*) for sign-up or unauthenticated routes",
+      "Proposes fixes that are update-safe for existing installs (migration hook for moved data, version bump), not only for fresh installs"
+    ]
+  },
+  {
+    "id": "exports-pitfalls",
+    "skills": ["packaging-yakitori-umbrel-apps"],
+    "query": "Our app needs a 32-byte base64 encryption key and an https base URL. Write the exports.sh.",
+    "files": [],
+    "expected_behavior": [
+      "Derives the key with derive_entropy \"${app_entropy_identifier}-<purpose>\" and converts the 64 hex chars to 32 raw bytes before base64",
+      "Uses ${APP_PROXY_PORT:-<manifest port>} and ${DEVICE_DOMAIN_NAME:-umbrel.local}, never bare $APP_PROXY_PORT or a hardcoded umbrel.local",
+      "No shebang, no set/exit/cd, no openssl rand; helper variables are unset at the end",
+      "Mentions that the label must never change after release because the key encrypts stored data"
+    ]
+  }
+]
