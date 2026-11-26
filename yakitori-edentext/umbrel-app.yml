@@ -1,0 +1,119 @@
+manifestVersion: 2.0
+id: yakitori-edentext
+category: files
+name: EdenText
+version: "0.15.0"
+tagline: Local-first browser word processor for .docx and .odt
+icon: https://raw.githubusercontent.com/stffnb/edentext/v0.15.0/public/icon-512.png
+description: >-
+  EdenText is an open-source, privacy-first word processor that runs locally in
+  your browser. Open and save real `.docx` and `.odt` documents, use `.dotx` and
+  `.ott` templates, export PDFs, and work with page layouts (A4/Letter, mirrored
+  book margins, columns, headers and footers, footnotes, watermarks), inherited
+  styles, spreadsheet-style table formulas, LaTeX math, citations, tables of
+  contents, tracked changes, threaded margin comments, password-protected files,
+  and offline spell/grammar checking across multiple languages.
+
+
+  By design, EdenText has no server-side database or account: documents are
+  processed in your browser, autosaved locally per browser origin, and written
+  directly to your computer via the File System Access API (Chrome/Edge) or
+  browser downloads. Keep your own `.docx`/`.odt` copies on disk or network
+  storage, since clearing site data clears browser-stored drafts.
+
+
+  Optional AI assistant and dictation: both can be configured per browser inside
+  Settings, or preset for everyone on this Umbrel via this app's Environment
+  settings (`EDENTEXT_*`). Setting `EDENTEXT_AI_PROXY_UPSTREAM` (for example
+  `http://ollama_ollama_1:11434` or an OpenAI/Anthropic URL) or
+  `EDENTEXT_DICTATION_PROXY_UPSTREAM` enables a same-origin nginx proxy (`/ai/`,
+  `/stt/`) that injects your API key server-side without exposing it to the
+  browser; keep Umbrel's app login enabled when proxy keys are configured. Note:
+  when proxying to Ollama over `/v1`, Ollama ignores per-request context sizes
+  and defaults to 2048 tokens unless you raise `OLLAMA_CONTEXT_LENGTH` (for
+  example `32768`) in your Ollama app settings.
+
+
+  umbrelOS 2.0 or newer is required. Open EdenText over HTTPS via Umbrel's
+  launch button (`https://<device>.local:8748`), your Tailscale IP, or a
+  `tailscale serve` `.ts.net` address so offline Service Worker caching,
+  microphone dictation, WebCrypto password encryption, and direct File System
+  Access saving work in a secure browser context.
+releaseNotes: >-
+  Initial Umbrel package of EdenText 0.15.0 (amd64 and arm64), with HTTPS
+  browser-API support on umbrelOS 2.0+ and optional server-side presets and
+  dynamic same-origin nginx proxies for AI models (including local Ollama) and
+  Whisper/OpenAI-compatible speech servers.
+developer: Steffen Becker
+website: https://edentext.app
+dependencies: []
+repo: https://github.com/stffnb/edentext
+support: https://github.com/stffnb/edentext/issues
+port: 8748
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/stffnb/edentext/v0.15.0/docs/showcase/hero.png
+  - https://raw.githubusercontent.com/stffnb/edentext/v0.15.0/docs/showcase/thesis-dark.png
+  - https://raw.githubusercontent.com/stffnb/edentext/v0.15.0/docs/showcase/book-spread.png
+  - https://raw.githubusercontent.com/stffnb/edentext/v0.15.0/docs/showcase/newsletter-tables.png
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+environment:
+  - name: EDENTEXT_AI_PROVIDER
+    services:
+      - web
+    options:
+      - openai
+      - anthropic
+    note: >-
+      AI dialect for the optional assistant preset and /ai/ proxy: openai (for
+      Ollama or any OpenAI-compatible server) or anthropic. Leave unset unless
+      configuring an AI preset.
+  - name: EDENTEXT_AI_PROXY_UPSTREAM
+    services:
+      - web
+    note: >-
+      Optional root URL proxied at /ai/, without /v1 (for example
+      http://ollama_ollama_1:11434 or https://api.openai.com). Presets the AI
+      endpoint to /ai/v1. For Ollama, also set OLLAMA_CONTEXT_LENGTH (e.g.
+      32768) in Ollama's own app settings.
+  - name: EDENTEXT_AI_PROXY_API_KEY
+    services:
+      - web
+    note: >-
+      Optional API key injected by nginx on /ai/ requests (Bearer for openai,
+      x-api-key for anthropic). Kept server-side and never sent to the browser.
+  - name: EDENTEXT_AI_MODEL
+    services:
+      - web
+    note: >-
+      Optional default model name for the AI assistant preset (for example
+      qwen3:14b on Ollama or claude-sonnet-4-6).
+  - name: EDENTEXT_AI_CONTEXT_TOKENS
+    services:
+      - web
+    note: >-
+      Optional context window size in tokens (>= 2048, e.g. 32768) advertised in
+      the AI preset. Leave unset for EdenText's default.
+  - name: EDENTEXT_DICTATION_PROXY_UPSTREAM
+    services:
+      - web
+    note: >-
+      Optional OpenAI-compatible speech-to-text root URL proxied at /stt/,
+      without /v1 (for example http://<app>_<service>_1:8000). Automatically
+      presets the dictation server to /stt/v1.
+  - name: EDENTEXT_DICTATION_PROXY_API_KEY
+    services:
+      - web
+    note: >-
+      Optional Bearer API key injected by nginx on /stt/ dictation requests.
+      Kept server-side and never exposed to the browser.
+  - name: EDENTEXT_DICTATION_MODEL
+    services:
+      - web
+    note: >-
+      Optional speech recognition model preset for the dictation server (for
+      example Systran/faster-whisper-small).
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

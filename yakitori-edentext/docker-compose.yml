@@ -1,0 +1,112 @@
+# EdenText 0.15.0 static browser word processor + optional nginx AI/STT proxy,
+# adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) so Service Worker
+#      offline caching, microphone dictation, WebCrypto PBKDF2, and File System
+#      Access API in-place saving run in a secure context.
+#   2. No server-side document state: documents stay in the user's browser and
+#      local files. Optional EDENTEXT_* settings write edentext.config.json and
+#      same-origin /ai/ and /stt/ nginx proxies at container start.
+#   3. Inlined entrypoint hooks normalize upstream URLs (adding http:// to bare
+#      local hosts and stripping accidental trailing /v1) and convert static
+#      proxy_pass directives to dynamic DNS-resolved variables so EdenText starts
+#      even when an upstream container (e.g. Ollama) is stopped and follows
+#      container IP changes across restarts.
+#   4. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-edentext_web_1
+      APP_PORT: 80
+      # Allow long-running local LLM generations (nginx /ai/ proxy allows 600s).
+      PROXY_TIMEOUT: 600000
+
+  web:
+    image: ghcr.io/stffnb/edentext:v0.15.0@sha256:c3cca5f55bd8f0a19d5da3394f666e06ac2e40d8f3c404b9320d512b0b36cfdb
+    restart: on-failure
+    stop_grace_period: 15s
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        printf '%s' "$$UMBREL_ENV_HOOK" > /docker-entrypoint.d/35-umbrel-edentext.envsh
+        printf '%s' "$$UMBREL_PROXY_HOOK" > /docker-entrypoint.d/45-umbrel-edentext-resolver.sh
+        chmod 755 /docker-entrypoint.d/35-umbrel-edentext.envsh /docker-entrypoint.d/45-umbrel-edentext-resolver.sh
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
+    environment:
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      # Sourced by /docker-entrypoint.sh before 40-edentext.sh runs.
+      UMBREL_ENV_HOOK: |
+        #!/bin/sh
+        norm_upstream() {
+          u=$$1
+          [ -n "$$u" ] || return 0
+          u=$$(printf '%s' "$$u" | sed 's/^[[:space:]]*//; s/[[:space:]]*$$//')
+          [ -n "$$u" ] || return 0
+          case "$$u" in
+            http://*|https://*) ;;
+            *) u="http://$$u" ;;
+          esac
+          while :; do
+            case "$$u" in
+              */) u=$${u%/} ;;
+              *) break ;;
+            esac
+          done
+          case "$$u" in
+            */v1) u=$${u%/v1} ;;
+          esac
+          printf '%s' "$$u"
+        }
+        if [ -n "$${EDENTEXT_AI_PROXY_UPSTREAM:-}" ]; then
+          export EDENTEXT_AI_PROXY_UPSTREAM="$$(norm_upstream "$$EDENTEXT_AI_PROXY_UPSTREAM")"
+        fi
+        if [ -n "$${EDENTEXT_DICTATION_PROXY_UPSTREAM:-}" ]; then
+          export EDENTEXT_DICTATION_PROXY_UPSTREAM="$$(norm_upstream "$$EDENTEXT_DICTATION_PROXY_UPSTREAM")"
+        fi
+      # Runs right after 40-edentext.sh to enable per-request DNS resolution and
+      # prevent Service Worker caching on GET /ai/* or /stt/*.
+      UMBREL_PROXY_HOOK: |
+        #!/bin/sh
+        set -eu
+        conf="$${EDENTEXT_NGINX_DIR:-/etc/nginx}/edentext.d/proxy.conf"
+        [ -f "$$conf" ] || exit 0
+        res="$${NGINX_LOCAL_RESOLVERS:-127.0.0.11}"
+        awk -v res="$$res" '
+          BEGIN { print "resolver " res " valid=10s ipv6=off;" }
+          /^location \/ai\/ \{/  { p = "/ai/";  v = "$$edentext_ai_upstream";  print; next }
+          /^location \/stt\/ \{/ { p = "/stt/"; v = "$$edentext_stt_upstream"; print; next }
+          /^[[:space:]]*proxy_pass / && p != "" {
+            u = $$0
+            sub(/^[[:space:]]*proxy_pass[[:space:]]+/, "", u)
+            sub(/\/;[[:space:]]*$$/, "", u)
+            sub(/;[[:space:]]*$$/, "", u)
+            base = ""
+            phost = ""
+            if (match(u, /^https?:\/\/[^\/]+/)) {
+              host = substr(u, 1, RLENGTH)
+              base = substr(u, RLENGTH + 1)
+              u = host
+              phost = host
+              sub(/^https?:\/\//, "", phost)
+              if (u ~ /^http:\/\//) sub(/:80$$/, "", phost)
+              if (u ~ /^https:\/\//) sub(/:443$$/, "", phost)
+            }
+            print "  set " v " \"" u "\";"
+            print "  rewrite ^" p "(.*)$$ " base "/$$1 break;"
+            print "  proxy_pass " v ";"
+            if (phost != "") print "  proxy_set_header Host \"" phost "\";"
+            print "  add_header Cache-Control \"no-store\" always;"
+            p = ""
+            next
+          }
+          { print }
+        ' "$$conf" > "$$conf.new"
+        cat "$$conf.new" > "$$conf" && rm -f "$$conf.new"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
