@@ -4,9 +4,9 @@ storage:
 id: yakitori-tirreno
 category: developer
 name: tirreno
-version: "0.10.1-umbrel.2"
+version: "0.10.1-umbrel.3"
 tagline: In-app security — event tracking, risk scoring and threat detection
-icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-tirreno/icon.svg
+icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-tirreno/icon-white.svg
 description: >-
   tirreno is a self-hosted security framework that watches what happens *inside*
   your application instead of at the network edge. Apps post events to it
@@ -58,10 +58,11 @@ defaultPassword: ""
 submitter: Yakitori
 submission: https://github.com/Oni-giri/yakitoris-app-store
 releaseNotes: >-
-  Second pass on this package: the database container no longer runs as an
-  unprivileged uid, which is what made installs fail while Postgres was still
-  initialising, and the icon is now an SVG that stays readable on the dark
-  App Store.
+  Fixes two faults found on first install: the database container ran as an
+  unprivileged uid, so Postgres exited before initialising, and the database
+  service was called `db`, which collides with every other app's `db` on
+  Umbrel's shared network and routed connections to the wrong database. It is
+  now `tirreno_db`. The icon is a mask-free SVG in white on the brand navy tile.
 
 
   Runs the upstream image unmodified: Apache serves the dashboard and the ingest

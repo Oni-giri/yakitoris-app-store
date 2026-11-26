@@ -29,7 +29,7 @@ services:
       LOG_TO_STDOUT: "true"
       PHP_MEMORY_LIMIT: "256M"
     depends_on:
-      db:
+      tirreno_db:
         condition: service_healthy
     # The upstream ENTRYPOINT bootstraps the schema from DATABASE_URL when
     # config.local.ini is absent, and needs install/install.sql to do it. It is
@@ -41,7 +41,7 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        export DATABASE_URL="postgres://tirreno:$$(cat /run/secrets/db-password)@db:5432/tirreno"
+        export DATABASE_URL="postgres://tirreno:$$(cat /run/secrets/db-password)@tirreno_db:5432/tirreno"
         exec /usr/local/bin/docker-entrypoint.sh sh -c 'rm -rf /var/www/html/install && cron && apache2-foreground'
     healthcheck:
       # Any HTTP response from Apache means the container is serving; /sensor/
@@ -52,13 +52,17 @@ services:
       retries: 5
       start_period: 120s
 
-  db:
+  # Named tirreno_db, not db: umbrelOS puts every app on one shared network, and
+  # a bare `db` alias collides with other apps' databases (Doop and Langflow both
+  # publish `db`). Two containers answering to `db` make DNS round-robin route the
+  # connection to the wrong one, which surfaces as auth failures and 500s.
+  tirreno_db:
     image: postgres:15@sha256:91b9edc40277faf94bc1e3d7ae621b185fa70f3099b94309c4731a8296114870
     restart: on-failure
     # Runs as root deliberately. The official image's entrypoint has to chown
     # PGDATA and prepare /var/run/postgresql before it drops to the postgres user
     # via gosu; as an unprivileged uid it cannot do either and exits 1, which
-    # then fails `depends_on: db healthy` and blocks the server from starting.
+    # then fails `depends_on: tirreno_db healthy` and blocks the server from starting.
     volumes:
       - ${APP_DATA_DIR}/data/db:/var/lib/postgresql/data
       - ${APP_DATA_DIR}/secrets:/run/secrets:ro

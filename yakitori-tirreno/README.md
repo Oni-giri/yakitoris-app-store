@@ -10,7 +10,7 @@ yakitori-tirreno/
 ├── docker-compose.yml      # app_proxy + server + db, digest-pinned
 ├── exports.sh              # canonical host for absolute URLs
 ├── hooks/pre-start         # per-device database password
-├── icon.svg                # white mark on the brand navy tile
+├── icon-white.svg          # white mark on the brand navy tile, mask-free
 └── vps/                    # senders for a remote host (sh + Node, no deps)
 ```
 
@@ -29,8 +29,9 @@ first account exists and there is no password-reset flow by default
 | `command:` override | The upstream entrypoint bootstraps the schema from `DATABASE_URL`, then the override deletes `/var/www/html/install` before Apache serves it. `.htaccess` explicitly allows `/install/index.php` through, and Umbrel's proxy cannot path-filter, so removal is the only way to keep the installer off the web. |
 | cron | In the same container, every 10 minutes: risk scores, enrichment, totals, retention. `LOG_TO_STDOUT=true` puts its output in Umbrel's app log view. |
 | `data/config` | Holds `config.local.ini`, which holds the generated **PEPPER**. The image mints it on first boot and ignores any `PEPPER` env var, so this directory is the only copy. Back it up with the database or neither is restorable. |
+| service name | Not `db`. umbrelOS puts every app on one shared network, so a bare `db` alias collides with Doop and Langflow, which both publish it; two containers answering to `db` make Docker's DNS round-robin route the connection to a stranger's Postgres. |
 | `secrets/db-password` | Generated once by `hooks/pre-start` and read via `POSTGRES_PASSWORD_FILE` / `cat` in the command. Never in the compose file, never in `docker inspect`, stable across updates. |
-| `db` runs as **root** | The official postgres entrypoint has to `chown` `PGDATA` and prepare `/var/run/postgresql` before dropping to the `postgres` user via `gosu`. As an unprivileged uid it can do neither and exits 1, which fails `depends_on: db healthy` and stops the server from ever being created. |
+| `tirreno_db` runs as **root** | The official postgres entrypoint has to `chown` `PGDATA` and prepare `/var/run/postgresql` before dropping to the `postgres` user via `gosu`. As an unprivileged uid it can do neither and exits 1, which fails `depends_on: tirreno_db healthy` and stops the server from ever being created. |
 
 `assets/logs` is deliberately not persisted: it only holds container-local logs,
 and mounting an empty volume over it would hide the `error.log` the image creates

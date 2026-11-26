@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28" role="img" aria-label="tirreno">
+  <title>tirreno</title>
+  <rect width="28" height="28" rx="7" fill="#161224"/>
+  <g fill="#fff">
+    <path d="M12.219 4.669A9.5 9.5 0 1 0 12.219 23.331V12.931H9.43V9.725H12.219Z"/>
+    <path d="M15.781 4.669A9.5 9.5 0 1 1 15.781 23.331V12.931H18.57V9.725H15.781Z"/>
+  </g>
+</svg>
