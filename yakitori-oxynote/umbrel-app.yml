@@ -1,0 +1,144 @@
+manifestVersion: 2.0
+id: yakitori-oxynote
+storage:
+  dataRoot: data
+category: developer
+name: Oxynote
+version: "0.11.0"
+tagline: Engineering wiki with live metrics, logs, and reviewable pages
+icon: https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/web/public/web-app-manifest-512x512.png
+description: >-
+  Oxynote is an open-source workspace for the docs about the systems you run:
+  architecture notes, API references, on-call runbooks, and release checklists
+  in one page tree that people edit together in real time. Pages can query
+  Prometheus, Loki, PostgreSQL, Supabase, MySQL, or MariaDB, so Live Metrics
+  charts (time series, bars, gauges, with Grafana macros such as
+  `$__rate_interval`) and Live Logs sit right next to the text that explains
+  them.
+
+
+  Type `/` for headings, checklists, code, callouts, Mermaid diagrams, Figma
+  embeds, Stripe-style API docs, live metrics, and logs. `⌘K` searches the whole
+  workspace down to a single line of code. Reviewable pages work like pull
+  requests: edits go into a draft with a block-level diff, reviewers approve on
+  the page, and merging is a separate step. AI agents such as Claude Code and
+  Codex can connect over MCP and edit structured blocks once you approve them;
+  the built-in Rubber Duck assistant is optional.
+
+
+  This package runs Oxynote's single all-in-one container with its embedded
+  PostgreSQL. Documents, generated secrets, uploaded images, and the search
+  index are stored in this app's data folder. Upstream's crash reporting to
+  Sentry is disabled by default.
+
+
+  First login: sign in as `admin@example.com` with password
+  `oxynote-admin-1234`, then change the email, password, and workspace name in
+  Settings right away. Nobody can sign up without an invitation. No email
+  server is configured by default, so invitation links are copied by hand from
+  workspace settings and password reset is off. A forgotten password cannot be
+  recovered unless you set `OXYNOTE_SMTP_DSN` in this app's settings.
+
+
+  umbrelOS 2.0 or newer is required. Open Oxynote through Umbrel's HTTPS launch
+  button (`https://<device>.local:8766`) and keep using that hostname. Sign-in
+  cookies, WebSockets, invitation links, and MCP are bound to it, so opening the
+  app by IP address will not sign you in. To use a Tailscale `.ts.net` address
+  instead, set `OXYNOTE_PUBLIC_URL` in this app's settings.
+
+
+  MCP clients connect to `https://<device>.local:8766/core/api/mcp`, which
+  bypasses Umbrel's login along with the OAuth discovery, registration, and
+  token endpoints. MCP clients authenticate with Oxynote's own OAuth tokens
+  and need your approval in the browser. Clients must trust your Umbrel's local
+  HTTPS certificate (for example via `NODE_EXTRA_CA_CERTS`). Data sources on
+  the Umbrel host are reachable at `host.docker.internal`; for SQL sources,
+  use a read-only database user.
+releaseNotes: >-
+  Initial Umbrel package of Oxynote 0.11.0 (amd64 and arm64), with HTTPS and
+  MCP support on umbrelOS 2.0+, crash reporting off by default, and optional
+  email and AI assistant settings.
+developer: Oxynote
+website: https://oxynote.io
+dependencies: []
+repo: https://github.com/oxynote/oxynote
+support: https://github.com/oxynote/oxynote/issues
+port: 8766
+requiresHttps: true
+gallery:
+  - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/logs-and-metrics-dark.webp
+  - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/chart-editor-dark.webp
+  - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/review-dark.webp
+  - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/collaboration-dark.webp
+  - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/mcp-dark.webp
+path: ""
+defaultUsername: "admin@example.com"
+defaultPassword: "oxynote-admin-1234"
+backupIgnore:
+  # Rebuilt from PostgreSQL automatically when missing.
+  - data/search
+  - data/search/*
+environment:
+  - name: OXYNOTE_PUBLIC_URL
+    services:
+      - web
+    note: >-
+      The HTTPS origin you open Oxynote at, with no path. Leave unset for
+      https://<device>.local:8766, or set your Tailscale URL (for example
+      https://<node>.<tailnet>.ts.net:8766). Sign-in, WebSockets, invitation
+      links, and MCP only work on this origin.
+  - name: OXYNOTE_SMTP_DSN
+    services:
+      - web
+    note: >-
+      Optional outgoing mail relay as smtp[s]://[user:pass@]host:port[?tls=none|starttls|tls].
+      Turns on email verification, emailed invitations, and password reset.
+      Also set OXYNOTE_EMAIL_FROM_ADDRESS.
+  - name: OXYNOTE_EMAIL_FROM_ADDRESS
+    services:
+      - web
+    note: >-
+      Sender for Oxynote's emails when OXYNOTE_SMTP_DSN is set, for example
+      "Oxynote <docs@example.com>".
+  - name: OXYNOTE_AI_ASSISTANT_PROVIDER
+    services:
+      - web
+    options:
+      - anthropic
+      - openai
+      - google
+      - ollama
+      - openrouter
+    note: >-
+      Turns on the optional Rubber Duck assistant. Leave unset to keep it off.
+      Use openai for any OpenAI-compatible server.
+  - name: OXYNOTE_AI_ASSISTANT_API_KEY
+    services:
+      - web
+    note: >-
+      API key for the chosen AI provider (not needed for ollama).
+  - name: OXYNOTE_AI_ASSISTANT_MODEL
+    services:
+      - web
+    note: >-
+      Optional model ID, for example claude-opus-5-5, gpt-5.1, or qwen3:32b.
+      Defaults to the provider's default model. Unsupported models disable
+      the assistant and log a warning.
+  - name: OXYNOTE_AI_ASSISTANT_BASE_URL
+    services:
+      - web
+    note: >-
+      Provider endpoint override. Required for ollama, for example
+      http://ollama_ollama_1:11434 for Umbrel's Ollama app.
+  - name: OXYNOTE_CRASH_REPORTING_DISABLED
+    default: "true"
+    services:
+      - web
+    options:
+      - "true"
+      - "false"
+    note: >-
+      Set to false to send crash reports (error, stack trace, and request path;
+      no document content) to the Oxynote team's Sentry.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

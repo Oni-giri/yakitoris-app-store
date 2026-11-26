@@ -1,0 +1,65 @@
+# Oxynote 0.11.0 all-in-one image (Caddy, Nuxt web, Go core, auth-realtime,
+# and an embedded PostgreSQL 18), adapted for umbrelOS 2.0+:
+#   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) at one canonical
+#      origin (exports.sh). Oxynote binds trusted origins, the cookie domain,
+#      WebSockets, and its MCP OAuth resource to that origin, and turns MCP
+#      off on plain-HTTP non-loopback origins.
+#   2. Only MCP, the OAuth discovery and client-registration/token/revoke
+#      endpoints MCP clients call, and signature-verified GitHub/Slack
+#      webhooks bypass Umbrel's login. Password sign-in and every page stay
+#      behind it because the first boot creates a well-known default admin.
+#   3. The image runs as uid 65532 and its embedded PostgreSQL cannot run
+#      under a uid without a passwd entry, so a one-shot root init service
+#      (reusing the same image) hands the data directory to uid 65532.
+#   4. Database, generated secrets, uploads, and the search index persist
+#      under APP_DATA_DIR/data. Upstream generates internal secrets there.
+#   5. Upstream's baked-in Sentry crash reporting is disabled by default.
+#   6. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-oxynote_web_1
+      APP_PORT: 8080
+      # MCP clients (Claude Code, Codex, ...) authenticate with Oxynote's own
+      # OAuth bearer tokens and cannot complete Umbrel's login page. The
+      # browser-facing authorize and consent pages stay behind Umbrel's login.
+      PROXY_AUTH_WHITELIST: "/core/api/mcp,/core/api/mcp/*,/.well-known/oauth-protected-resource*,/.well-known/oauth-authorization-server*,/.well-known/openid-configuration*,/api/auth/oauth2/register,/api/auth/oauth2/token,/api/auth/oauth2/revoke,/core/api/apps/github/events,/core/api/apps/slack/events,/core/api/apps/slack/commands,/core/api/apps/slack/slash"
+      # Keep collaborative-editing WebSockets, MCP streams, and long AI
+      # assistant replies open across Umbrel's proxy (milliseconds).
+      PROXY_TIMEOUT: 3600000
+
+  # One-shot root init. Umbrel creates APP_DATA_DIR/data owned by uid 1000
+  # (or root); Oxynote runs as uid 65532. Reuses the already-pulled image so
+  # there is no extra download; the app container itself stays non-root.
+  init:
+    image: ghcr.io/oxynote/oxynote:0.11.0@sha256:02ed0f65c4d5f1f8d8cc6751a055639fa440aba9646c73c687b8d7c5d4c1fdee
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - find /oxynote/data -xdev \( ! -user 65532 -o ! -group 65532 \) -exec chown -h 65532:65532 {} +
+    restart: on-failure
+    volumes:
+      - ${APP_DATA_DIR}/data:/oxynote/data
+
+  web:
+    image: ghcr.io/oxynote/oxynote:0.11.0@sha256:02ed0f65c4d5f1f8d8cc6751a055639fa440aba9646c73c687b8d7c5d4c1fdee
+    restart: on-failure
+    # The launcher shuts its services down in order and flushes open
+    # documents last; Docker's default 10s grace would SIGKILL that mid-flush.
+    stop_grace_period: 1m
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    # Lets data sources reach Prometheus, Loki, or databases published on the
+    # Umbrel host itself via host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OXYNOTE_PUBLIC_URL: ${APP_OXYNOTE_PUBLIC_URL}
+      OXYNOTE_CRASH_REPORTING_DISABLED: "true"
+    volumes:
+      - ${APP_DATA_DIR}/data:/oxynote/data
+    # The image ships its own layered HEALTHCHECK (all internal services plus
+    # the Caddy front door, start period 180s).
