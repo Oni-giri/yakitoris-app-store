@@ -1,36 +1,52 @@
 # Chartbrew 6.0.1, adapted for umbrelOS 2.0+:
-#   1. One origin instead of upstream's two. `web` runs web/server.cjs (Node.js
-#      core only) from the same image: it serves the prebuilt UI and proxies
-#      /api/* (prefix stripped, WebSockets included) plus the root-level MCP
-#      endpoints (/mcp, /.well-known/oauth-*, /oauth/{authorize,token,register,
-#      revoke}) to `server`. It patches the bundle's baked localhost:4018/4019
-#      URLs to the browser's own origin, so the UI works from <device>.local, a
-#      Tailscale IP, or a .ts.net name, and it replaces upstream's entrypoint,
-#      which re-runs a multi-minute `vite build` and `npx serve` (fetched from
-#      npm) on every start.
-#   2. Served over Umbrel's HTTPS proxy (requiresHttps). Chartbrew's MCP server
-#      refuses to start its OAuth routes without a public https:// URL.
-#   3. /api and the MCP/OAuth endpoints bypass Umbrel's browser login so API
-#      keys, the Data API, and MCP clients authenticate with Chartbrew's own
-#      tokens. Signups close after the first account (CB_RESTRICT_SIGNUP=1).
-#   4. Encryption keys, legacy secret, BullMQ dashboard password, and database
-#      and Redis passwords are derived per device in exports.sh. Without them
-#      Chartbrew mints random keys into the container's /code/.env, which would
-#      be lost (with every stored credential) on the next container recreation.
+#   1. One origin instead of upstream's two (UI :4018, API :4019). `web` runs
+#      the inline Node.js script below (core modules only) from the same image:
+#      it serves the prebuilt UI and proxies /api/* (prefix stripped,
+#      WebSockets included), the Data API at /api/v1/*, and the root-level MCP
+#      endpoints to `server`. It patches the bundle's baked localhost:4018/4019
+#      URLs to the browser's own origin, so the UI works from <device>.local,
+#      an IP, or a Tailscale name, and it replaces upstream's entrypoint, which
+#      re-runs a multi-minute `vite build` and an npm-fetched `npx serve` on
+#      every start. The script is inline (not a package file) because umbrelOS
+#      freezes extra package files at first install.
+#   2. Served over Umbrel's HTTPS proxy (requiresHttps). Chartbrew's MCP OAuth
+#      module refuses to start without a public https:// URL (CB_SITE_URL).
+#   3. Snapshots: Chartbrew screenshots report/chart pages in headless Chromium
+#      inside `server`, at CB_SITE_URL, which that container cannot open
+#      (.local/Tailscale names, Umbrel's CA, Umbrel login). A small preload
+#      (NODE_OPTIONS=--require) points those page loads at `web` on the
+#      internal network, and makes a failed migration exit so Docker retries.
+#   4. Encryption key, legacy secret, BullMQ password, and database and Redis
+#      passwords are derived per device in exports.sh. Without them Chartbrew
+#      mints random keys into the container's /code/.env, which would be lost
+#      (with every stored credential) on the next container recreation.
 #   5. PostgreSQL, Redis (AOF), and uploaded files persist under APP_DATA_DIR/data.
 #   6. All images are pinned to release tags and multi-architecture digests.
+#
+# Umbrel login bypass audit (PROXY_AUTH_WHITELIST), checked against v6.0.1:
+#   - /api/v1/*: the Data API. Called by scripts and agents with team API keys;
+#     every route runs verifyDataApiKey (server/api/DataApiRoute.js).
+#   - /mcp: MCP clients; verifyMcpAuth accepts API keys or OAuth tokens only.
+#   - /mcp/oauth/client-metadata: static public OAuth client document that
+#     remote MCP authorization servers fetch; no data.
+#   - /.well-known/oauth-*, /.well-known/openid-configuration: discovery
+#     metadata (openid-configuration answers 404, so clients fall back).
+#   - /oauth/token, /oauth/register, /oauth/revoke: OAuth token exchange and
+#     dynamic client registration for MCP clients, authenticated by PKCE
+#     codes, client credentials, or refresh tokens.
+#   Everything else, including the rest of /api (sign-up, login, password
+#   reset, invites), /oauth/authorize, and the consent page, stays behind
+#   Umbrel's login, so no one can claim the first account from the network.
+#   Umbrel sends X-Forwarded-For: 127.0.0.1 for every client, so Chartbrew's
+#   per-IP limiters are global; the Data API/MCP failed-auth limit is raised
+#   because API keys are signed tokens that cannot be brute-forced.
 
 services:
   app_proxy:
     environment:
       APP_HOST: yakitori-chartbrew_web_1
       APP_PORT: 4018
-      # API keys, the Data API, MCP clients, and OAuth token exchanges cannot
-      # complete Umbrel's login page; Chartbrew authenticates them itself.
-      # Exact prefixes plus /* so bare probes do not 302 to app-auth.
-      PROXY_AUTH_WHITELIST: "/api,/api/*,/mcp,/.well-known/oauth-authorization-server,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/oauth/authorize,/oauth/token,/oauth/register,/oauth/revoke"
-      # Keep AI assistant streams, socket.io, and long dataset queries open.
-      PROXY_TIMEOUT: 3600000
+      PROXY_AUTH_WHITELIST: "/api/v1,/api/v1/*,/mcp,/mcp/oauth/client-metadata,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/openid-configuration,/oauth/token,/oauth/register,/oauth/revoke"
 
   web:
     image: razvanilin/chartbrew:6.0.1@sha256:65d2fedffc0df3a928a0cb5ad7605c9a4d5bb00cf279b2fa142574417390be1e
@@ -39,15 +55,377 @@ services:
     stop_grace_period: 15s
     depends_on:
       server:
-        condition: service_started
-    entrypoint: ["node", "/umbrel/web/server.cjs"]
+        condition: service_healthy
     environment:
       CB_WEB_PORT: "4018"
       CB_API_UPSTREAM_HOST: yakitori-chartbrew_server_1
       CB_API_UPSTREAM_PORT: "4019"
-    volumes:
-      # Directory mount (not a single file) so app updates pick up a new script.
-      - ${APP_DATA_DIR}/web:/umbrel/web:ro
+    entrypoint:
+      - node
+      - -e
+      - |
+        "use strict";
+        // Chartbrew front door for umbrelOS (see the header of this compose file).
+        // Inlined here because umbrelOS freezes package files other than compose,
+        // exports.sh, hooks and templates at first install. Contains no dollar signs,
+        // so Compose interpolation leaves it untouched.
+        const fs = require("node:fs");
+        const http = require("node:http");
+        const net = require("node:net");
+        const path = require("node:path");
+        const zlib = require("node:zlib");
+
+        const DIST = path.resolve(process.env.CB_WEB_DIST || "/code/client/dist");
+        const PORT = Number(process.env.CB_WEB_PORT || 4018);
+        const API_HOST = process.env.CB_API_UPSTREAM_HOST || "127.0.0.1";
+        const API_PORT = Number(process.env.CB_API_UPSTREAM_PORT || 4019);
+
+        // 1. Patch the prebuilt bundle in place (idempotent; every container
+        //    recreation starts again from the pristine image).
+        const DOLLAR = String.fromCharCode(36);
+        const RUNTIME_ORIGIN = DOLLAR + "{globalThis.location.origin}";
+        const PATCH_MARKER = "globalThis.location.origin";
+        const SOCKET_CALL = "(globalThis.location.origin,{withCredentials:!0,";
+        const SOCKET_PATH = "path:`/api/socket.io`";
+        const SOCKET_CALL_RE = /this\.socket=([\w\x24]+)\(([\w\x24]+),\{withCredentials:!0,/g;
+        const patchedAssets = new Set();
+
+        function countOf(haystack, needle) {
+          let count = 0;
+          for (let i = haystack.indexOf(needle); i !== -1; i = haystack.indexOf(needle, i + needle.length)) count += 1;
+          return count;
+        }
+
+        function patchBundle() {
+          const assets = path.join(DIST, "assets");
+          let socketCalls = 0;
+          let socketPaths = 0;
+          let changed = 0;
+          for (const name of fs.readdirSync(assets)) {
+            if (!name.endsWith(".js")) continue;
+            const file = path.join(assets, name);
+            const before = fs.readFileSync(file, "utf8");
+            const after = before
+              // socket.io-client reads a URL path as the namespace, so connect to the
+              // bare origin and reach the API through the socket path instead.
+              .replace(SOCKET_CALL_RE, (match, io) => "this.socket=" + io + SOCKET_CALL)
+              .split("path:`/socket.io`").join(SOCKET_PATH)
+              // Every baked URL starts a template literal: swap in the runtime origin.
+              .split("`http://localhost:4019").join("`" + RUNTIME_ORIGIN + "/api")
+              .split("`http://localhost:4018").join("`" + RUNTIME_ORIGIN);
+            if (after.includes("localhost:4019") || after.includes("localhost:4018")) {
+              throw new Error(name + " still references a baked localhost:4018/4019 URL in an unexpected form");
+            }
+            if (after !== before) {
+              fs.writeFileSync(file, after);
+              changed += 1;
+            }
+            if (after.includes(PATCH_MARKER)) patchedAssets.add("/assets/" + name);
+            socketCalls += countOf(after, SOCKET_CALL);
+            socketPaths += countOf(after, SOCKET_PATH);
+          }
+          if (socketCalls !== 1 || socketPaths !== 1) {
+            throw new Error("expected exactly one socket.io client call to patch, found " + socketCalls + " call(s) and " + socketPaths + " path(s)");
+          }
+          return changed;
+        }
+
+        // 2. Static UI with SPA fallback.
+        const TYPES = {
+          ".css": "text/css; charset=utf-8", ".gif": "image/gif", ".html": "text/html; charset=utf-8",
+          ".ico": "image/x-icon", ".jpeg": "image/jpeg", ".jpg": "image/jpeg",
+          ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
+          ".map": "application/json; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+          ".mp4": "video/mp4", ".otf": "font/otf", ".png": "image/png", ".svg": "image/svg+xml",
+          ".ttf": "font/ttf", ".txt": "text/plain; charset=utf-8", ".wasm": "application/wasm",
+          ".webm": "video/webm", ".webmanifest": "application/manifest+json", ".webp": "image/webp",
+          ".woff": "font/woff", ".woff2": "font/woff2",
+        };
+        const COMPRESSIBLE = new Set([".css", ".html", ".js", ".json", ".map", ".mjs", ".svg", ".ttf", ".txt", ".webmanifest"]);
+        const gzipCache = new Map();
+
+        function resolveStatic(pathname) {
+          let decoded;
+          try {
+            decoded = decodeURIComponent(pathname);
+          } catch {
+            return null;
+          }
+          if (decoded.includes("\0")) return null;
+          const file = path.join(DIST, path.normalize(decoded));
+          if (file !== DIST && !file.startsWith(DIST + path.sep)) return null;
+          try {
+            const stat = fs.statSync(file);
+            return stat.isFile() ? { file, stat } : null;
+          } catch {
+            return null;
+          }
+        }
+
+        function parseRange(header, size) {
+          const match = /^bytes=(\d*)-(\d*)(?![\s\S])/.exec(header.trim());
+          if (!match || (match[1] === "" && match[2] === "")) return null;
+          let start;
+          let end;
+          if (match[1] === "") {
+            const suffix = Number(match[2]);
+            if (suffix === 0) return "unsatisfiable";
+            start = Math.max(0, size - suffix);
+            end = size - 1;
+          } else {
+            start = Number(match[1]);
+            end = match[2] === "" ? size - 1 : Math.min(Number(match[2]), size - 1);
+          }
+          if (start > end || start >= size) return "unsatisfiable";
+          return { start, end };
+        }
+
+        function etagMatches(header, etag) {
+          if (!header) return false;
+          return header.split(",").some((tag) => {
+            const t = tag.trim();
+            return t === "*" || t === etag || "W/" + t === etag;
+          });
+        }
+
+        function sendText(res, status, body, extra) {
+          res.writeHead(status, Object.assign({
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Length": Buffer.byteLength(body),
+            "Cache-Control": "no-store",
+          }, extra || {}));
+          res.end(body);
+        }
+
+        function cacheControl(pathname) {
+          if (!pathname.startsWith("/assets/")) return "no-cache";
+          // The patched chunks keep upstream's hashed names, so a later package
+          // version could change their content under the same URL: revalidate those.
+          return patchedAssets.has(pathname) ? "no-cache" : "public, max-age=31536000, immutable";
+        }
+
+        function serveStatic(req, res, pathname) {
+          if (req.method !== "GET" && req.method !== "HEAD") {
+            sendText(res, 405, "Method Not Allowed\n", { Allow: "GET, HEAD" });
+            return;
+          }
+          let found = pathname === "/" ? null : resolveStatic(pathname);
+          let servedPath = pathname;
+          if (!found) {
+            // Hashed assets and well-known probes must 404 rather than receive the
+            // SPA shell; OAuth/MCP clients rely on that to fall back correctly.
+            if (pathname.startsWith("/assets/") || pathname.startsWith("/.well-known/")) {
+              sendText(res, 404, "Not Found\n");
+              return;
+            }
+            found = resolveStatic("/index.html");
+            servedPath = "/index.html";
+            if (!found) {
+              sendText(res, 500, "Chartbrew UI files are missing from the image\n");
+              return;
+            }
+          }
+
+          const { file, stat } = found;
+          const ext = path.extname(file).toLowerCase();
+          const etag = "W/\"" + stat.size.toString(16) + "-" + Math.floor(stat.mtimeMs).toString(16) + "\"";
+          const headers = {
+            "Content-Type": TYPES[ext] || "application/octet-stream",
+            "Cache-Control": cacheControl(servedPath),
+            "ETag": etag,
+            "X-Content-Type-Options": "nosniff",
+          };
+          if (COMPRESSIBLE.has(ext)) headers.Vary = "Accept-Encoding";
+
+          if (etagMatches(req.headers["if-none-match"], etag)) {
+            res.writeHead(304, headers);
+            res.end();
+            return;
+          }
+
+          // Range requests get identity bytes; otherwise gzip compressible files.
+          if (!req.headers.range && COMPRESSIBLE.has(ext) && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+            let cached = gzipCache.get(file);
+            if (!cached || cached.etag !== etag) {
+              cached = { etag, body: zlib.gzipSync(fs.readFileSync(file), { level: 6 }) };
+              gzipCache.set(file, cached);
+            }
+            headers["Content-Encoding"] = "gzip";
+            headers["Content-Length"] = cached.body.length;
+            res.writeHead(200, headers);
+            res.end(req.method === "HEAD" ? undefined : cached.body);
+            return;
+          }
+
+          headers["Accept-Ranges"] = "bytes";
+          let status = 200;
+          let start = 0;
+          let end = stat.size - 1;
+          if (req.headers.range) {
+            const range = parseRange(req.headers.range, stat.size);
+            if (range === "unsatisfiable") {
+              sendText(res, 416, "Range Not Satisfiable\n", { "Content-Range": "bytes */" + stat.size });
+              return;
+            }
+            if (range) {
+              status = 206;
+              start = range.start;
+              end = range.end;
+              headers["Content-Range"] = "bytes " + start + "-" + end + "/" + stat.size;
+            }
+          }
+          headers["Content-Length"] = stat.size === 0 ? 0 : end - start + 1;
+          res.writeHead(status, headers);
+          if (req.method === "HEAD" || stat.size === 0) {
+            res.end();
+            return;
+          }
+          const stream = fs.createReadStream(file, { start, end });
+          stream.on("error", () => res.destroy());
+          stream.pipe(res);
+        }
+
+        // 3. Reverse proxy to the API (HTTP, streaming responses, WebSockets).
+        // Root-level API paths: MCP must live at exactly /mcp (Chartbrew requires it),
+        // and its OAuth metadata/endpoints and client-metadata document sit beside it.
+        const ROOT_API_PATHS = new Set(["/mcp", "/mcp/oauth/client-metadata", "/oauth/authorize", "/oauth/token", "/oauth/register", "/oauth/revoke"]);
+        const HOP_BY_HOP = ["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "proxy-connection", "te", "trailer", "transfer-encoding", "upgrade"];
+        const FORWARDED = ["x-forwarded-for", "x-forwarded-host", "x-forwarded-proto"];
+        const agent = new http.Agent({ keepAlive: true, maxSockets: 256 });
+
+        function splitUrl(rawUrl) {
+          const q = rawUrl.indexOf("?");
+          return q === -1 ? [rawUrl, ""] : [rawUrl.slice(0, q), rawUrl.slice(q)];
+        }
+
+        // Returns the upstream request target, or null when the UI should handle it.
+        function apiTarget(rawUrl) {
+          const [pathname, search] = splitUrl(rawUrl);
+          // The Data API is mounted at /api/v1 on the server itself: keep it as-is.
+          if (pathname === "/api/v1" || pathname.startsWith("/api/v1/")) return rawUrl;
+          if (pathname === "/api" || pathname.startsWith("/api/")) return (pathname.slice(4) || "/") + search;
+          if (ROOT_API_PATHS.has(pathname) || pathname.startsWith("/.well-known/oauth-")) return rawUrl;
+          return null;
+        }
+
+        // Umbrel's gateway sets X-Forwarded-* itself; pass them through unchanged
+        // and only fill them in for requests that did not come through it.
+        function forwardedValues(req) {
+          return {
+            "x-forwarded-for": req.headers["x-forwarded-for"] || req.socket.remoteAddress || "",
+            "x-forwarded-host": req.headers["x-forwarded-host"] || req.headers.host || "",
+            "x-forwarded-proto": req.headers["x-forwarded-proto"] || "http",
+          };
+        }
+
+        function stripHopByHop(headers) {
+          const listed = String(headers.connection || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
+          for (const name of HOP_BY_HOP.concat(listed)) delete headers[name];
+          return headers;
+        }
+
+        function proxyHttp(req, res, target) {
+          const chunked = Boolean(req.headers["transfer-encoding"]);
+          const headers = stripHopByHop(Object.assign({}, req.headers));
+          // Re-frame chunked request bodies explicitly. Without this, Node writes the
+          // body of a chunked GET/DELETE/OPTIONS unframed onto the pooled keep-alive
+          // connection, where the API would parse it as a second (smuggled) request.
+          if (chunked) headers["transfer-encoding"] = "chunked";
+          Object.assign(headers, forwardedValues(req));
+
+          const upstream = http.request({ agent, host: API_HOST, port: API_PORT, method: req.method, path: target, headers });
+          upstream.on("response", (upstreamRes) => {
+            const out = stripHopByHop(Object.assign({}, upstreamRes.headers));
+            res.writeHead(upstreamRes.statusCode, upstreamRes.statusMessage, out);
+            // Flush immediately so server-sent events and AI streams are not held back.
+            res.flushHeaders();
+            upstreamRes.pipe(res);
+            upstreamRes.on("error", () => res.destroy());
+          });
+          upstream.on("error", () => {
+            if (!res.headersSent) {
+              sendText(res, 502, "Chartbrew's API is not reachable yet. It may still be starting or running database migrations; try again in a moment.\n", { "Retry-After": "5" });
+            } else {
+              res.destroy();
+            }
+          });
+          res.on("close", () => {
+            if (!res.writableFinished) upstream.destroy();
+          });
+          req.pipe(upstream);
+        }
+
+        function proxyUpgrade(req, socket, head) {
+          const target = apiTarget(req.url);
+          if (!target) {
+            socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+            return;
+          }
+          let connected = false;
+          const upstream = net.connect(API_PORT, API_HOST);
+          socket.on("error", () => {
+            socket.destroy();
+            upstream.destroy();
+          });
+          socket.on("close", () => upstream.destroy());
+          upstream.on("close", () => socket.destroy());
+          upstream.on("error", () => {
+            if (!connected && socket.writable) socket.end("HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+            upstream.destroy();
+          });
+          upstream.on("connect", () => {
+            connected = true;
+            socket.setTimeout(0);
+            socket.setNoDelay(true);
+            upstream.setNoDelay(true);
+            // Each upgrade gets its own upstream connection, so nothing is shared.
+            const lines = [req.method + " " + target + " HTTP/1.1"];
+            for (let i = 0; i < req.rawHeaders.length; i += 2) {
+              if (!FORWARDED.includes(req.rawHeaders[i].toLowerCase())) lines.push(req.rawHeaders[i] + ": " + req.rawHeaders[i + 1]);
+            }
+            const forwarded = forwardedValues(req);
+            for (const name of FORWARDED) lines.push(name + ": " + forwarded[name]);
+            upstream.write(lines.join("\r\n") + "\r\n\r\n");
+            if (head && head.length) upstream.write(head);
+            upstream.pipe(socket);
+            socket.pipe(upstream);
+          });
+        }
+
+        // 4. Server.
+        try {
+          const changed = patchBundle();
+          console.log("[chartbrew-web] UI bundle ready (" + changed + " file(s) patched this start, " + patchedAssets.size + " carry the runtime origin)");
+        } catch (error) {
+          console.error("[chartbrew-web] " + (error && error.message ? error.message : error));
+          process.exit(1);
+        }
+
+        const server = http.createServer((req, res) => {
+          const target = apiTarget(req.url);
+          if (target) {
+            proxyHttp(req, res, target);
+            return;
+          }
+          serveStatic(req, res, splitUrl(req.url)[0]);
+        });
+        // Uploads, AI chats and MCP calls can outlive Node's 5-minute default.
+        server.requestTimeout = 0;
+        server.headersTimeout = 60000;
+        server.keepAliveTimeout = 65000;
+        server.on("upgrade", proxyUpgrade);
+        server.on("clientError", (err, socket) => {
+          if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+        });
+        server.listen(PORT, "0.0.0.0", () => {
+          console.log("[chartbrew-web] listening on :" + PORT + ", API upstream " + API_HOST + ":" + API_PORT);
+        });
+        const shutdown = () => {
+          server.close(() => process.exit(0));
+          setTimeout(() => process.exit(0), 5000).unref();
+        };
+        process.on("SIGTERM", shutdown);
+        process.on("SIGINT", shutdown);
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4018/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 30s
@@ -67,8 +445,6 @@ services:
         condition: service_healthy
     working_dir: /code/server
     # Upstream's entrypoint.sh also rebuilds and serves the UI; `web` does that.
-    # The API derives its public URLs from CB_SITE_URL, and Chartbrew's MCP OAuth
-    # module throws at start-up unless that URL is https://.
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -79,10 +455,91 @@ services:
         esac
         export VITE_APP_CLIENT_HOST="$$site"
         export VITE_APP_API_HOST="$$site/api"
+        # Chartbrew hands CB_MAIL_SECURE to nodemailer as a string, and any
+        # non-empty string (including "false") enables implicit TLS.
+        case "$${CB_MAIL_SECURE:-}" in
+          false|False|FALSE|0|no|No|NO|off|Off|OFF) export CB_MAIL_SECURE="" ;;
+        esac
+        cat > /tmp/umbrel-preload.cjs <<'UMBREL_PRELOAD'
+        "use strict";
+        // Loaded into the API through NODE_OPTIONS=--require (see the server command).
+        const Module = require("node:module");
+
+        // (a) Snapshots: Chartbrew renders report and chart snapshots by opening
+        // CB_SITE_URL pages in a headless Chromium inside this container. That public
+        // HTTPS origin is not reachable from here (.local/Tailscale names, Umbrel's
+        // CA, Umbrel login), so point those page loads at the web service on the
+        // internal network; the UI then calls its own origin's /api from there.
+        function trimSlashes(value) {
+          let out = String(value || "");
+          while (out.endsWith("/")) out = out.slice(0, -1);
+          return out;
+        }
+        const site = trimSlashes(process.env.VITE_APP_CLIENT_HOST);
+        const internal = trimSlashes(process.env.CB_SNAPSHOT_ORIGIN);
+
+        function rewrite(url) {
+          if (!site || !internal || typeof url !== "string") return url;
+          if (url === site || url.startsWith(site + "/") || url.startsWith(site + "?")) return internal + url.slice(site.length);
+          return url;
+        }
+
+        function wrapPage(page) {
+          if (page && typeof page.goto === "function" && !page.__umbrelGoto) {
+            const goto = page.goto.bind(page);
+            page.goto = (url, options) => goto(rewrite(url), options);
+            page.__umbrelGoto = true;
+          }
+          return page;
+        }
+
+        function wrapContextLike(target) {
+          if (target && typeof target.newPage === "function" && !target.__umbrelNewPage) {
+            const newPage = target.newPage.bind(target);
+            target.newPage = async (...args) => wrapPage(await newPage(...args));
+            target.__umbrelNewPage = true;
+          }
+          if (target && typeof target.newContext === "function" && !target.__umbrelNewContext) {
+            const newContext = target.newContext.bind(target);
+            target.newContext = async (...args) => wrapContextLike(await newContext(...args));
+            target.__umbrelNewContext = true;
+          }
+          return target;
+        }
+
+        function wrapPlaywright(exported) {
+          const browserType = exported && exported.chromium;
+          if (browserType && typeof browserType.launch === "function" && !browserType.__umbrelLaunch) {
+            const launch = browserType.launch.bind(browserType);
+            browserType.launch = async (...args) => wrapContextLike(await launch(...args));
+            browserType.__umbrelLaunch = true;
+            console.log("[umbrel] snapshot pages for " + site + " load from " + internal);
+          }
+          return exported;
+        }
+
+        const load = Module._load;
+        Module._load = function umbrelLoad(request, parent, isMain) {
+          const exported = load.apply(this, arguments);
+          return request === "playwright" || request === "playwright-core" ? wrapPlaywright(exported) : exported;
+        };
+
+        // (b) Upstream logs a failed migration and then idles without listening, so
+        // `restart: on-failure` never fires. Exit instead so Docker retries it.
+        const consoleError = console.error;
+        console.error = function umbrelConsoleError(...args) {
+          consoleError.apply(console, args);
+          if (args.some((arg) => typeof arg === "string" && arg.includes("Migrations failed, could not run the server app"))) {
+            setTimeout(() => process.exit(1), 250);
+          }
+        };
+        UMBREL_PRELOAD
+        export NODE_OPTIONS="--require /tmp/umbrel-preload.cjs"
         exec node index.js
     environment:
       NODE_ENV: production
       CB_SITE_URL: ${APP_CHARTBREW_SITE_URL}
+      CB_SNAPSHOT_ORIGIN: http://yakitori-chartbrew_web_1:4018
       CB_API_HOST: 0.0.0.0
       CB_API_PORT: "4019"
       CB_DB_DIALECT: postgres
@@ -98,8 +555,11 @@ services:
       CB_SECRET: ${APP_CHARTBREW_SECRET}
       CB_BULLMQ_USERNAME: chartbrew
       CB_BULLMQ_PASSWORD: ${APP_CHARTBREW_BULLMQ_PASSWORD}
-      # The first account can always sign up; everyone after needs an invite.
+      # Sign-up is behind Umbrel's login anyway; after the first account,
+      # everyone else needs an invite.
       CB_RESTRICT_SIGNUP: "1"
+      # Global on Umbrel (see the audit above); upstream default is 30/min.
+      CB_DATA_API_AUTH_RATE_LIMIT_MAX: "600"
       # Upstream blocks data sources on private ranges (192.168/16, 10/8,
       # 100.64/10 Tailscale, ...) as SSRF protection. On a home server those are
       # where the databases live, so they are allowed by default here; set to
@@ -127,7 +587,7 @@ services:
     volumes:
       - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chartbrew -d chartbrew"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U chartbrew -d chartbrew"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -145,7 +605,7 @@ services:
     volumes:
       - ${APP_DATA_DIR}/data/redis:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 20

@@ -4,63 +4,82 @@ storage:
   dataRoot: data
 category: developer
 name: Chartbrew
-version: "6.0.1"
+version: "6.0.1-umbrel.1"
 tagline: Live dashboards and reports from your databases and APIs, with an AI assistant
 icon: https://avatars.githubusercontent.com/u/57401255?s=512&v=4
 description: >-
   Chartbrew is an open-source reporting platform for building live dashboards
   and client reports from PostgreSQL, MySQL, MongoDB, ClickHouse, Supabase,
-  TimescaleDB, Firestore, Realtime Database, REST APIs, Strapi, Stripe, Google
-  Analytics, Customer.io, Jira, and other MCP servers. Write SQL or use the
-  visual query builder, turn
-  results into reusable datasets, and arrange charts, KPIs, tables, and
-  filters on dashboards that refresh on a schedule. Share them as public
-  reports or embeddable charts, set data alerts, and send snapshot reports.
+  TimescaleDB, Firestore, Realtime Database, Strapi, Stripe, Google Analytics,
+  Customer.io, Jira, REST APIs, and MCP servers. Write SQL or use the visual
+  query builder, turn results into reusable datasets, and arrange charts, KPIs,
+  tables, and filters on dashboards that refresh on a schedule. Share them as
+  reports or embeddable charts, set data alerts, and email snapshot reports.
 
 
-  On first launch, open the app and create your account—this first account can
-  always sign up, and self-service sign-up then closes; invite everyone else
-  from your team settings.
+  🛠️ SET-UP INSTRUCTIONS
 
 
-  This package runs the official Chartbrew image with PostgreSQL and Redis,
-  per-device encryption keys derived from your Umbrel, and a single HTTPS
-  origin for the UI, API, real-time updates, and MCP. Data sources on your LAN,
-  your tailnet, or this Umbrel are reachable out of the box (upstream blocks
-  private network ranges by default; set `CB_ALLOW_PRIVATE_NETWORK_CALLS` to
-  `false` in this app's settings to restore that).
+  Open the app and create your account. Only this first account can sign up on
+  its own; invite everyone else from your team settings. The first start runs
+  every database migration and can take a couple of minutes.
 
 
-  For AI agents: Chartbrew includes an MCP server and a versioned Data API with
-  scoped access (read data by default; refresh, preview, and dataset writes are
-  opt-in scopes). Create an API key in Team settings > API keys, or connect an MCP client
-  to `https://<device>.local:4018/mcp` with OAuth. These endpoints and `/api/*`
-  bypass Umbrel's login and authenticate with Chartbrew's own tokens. MCP OAuth
-  only accepts the URL in `CB_SITE_URL`; to connect agents over Tailscale, set it
-  to your `tailscale serve` address (e.g. `https://<node>.<tailnet>.ts.net:4018`).
+  Data sources on your LAN, your tailnet, or this Umbrel are reachable out of
+  the box. Upstream blocks private network ranges by default; set
+  `CB_ALLOW_PRIVATE_NETWORK_CALLS` to `false` in this app's settings to restore
+  that. The AI assistant (natural-language charts, SQL generation, dashboard
+  building) needs an OpenAI API key in `CB_OPENAI_API_KEY`. Email (invites,
+  password resets, snapshot reports) needs the `CB_MAIL_*` SMTP settings.
 
 
-  Public dashboards, report links, and embedded charts are behind Umbrel's login
-  by default. To share them with people who have no Umbrel account, disable
-  "Require Umbrel login" in this app's settings; Chartbrew still protects every
-  private page and API with its own accounts.
+  For AI agents and scripts: create an API key in Team settings > API keys, then
+  call the Data API at `https://<device>.local:4018/api/v1/...` or connect an MCP
+  client to `https://<device>.local:4018/mcp` (API key or OAuth). Keys are scoped:
+  reading data is the default; refresh, preview, and dataset writes are opt-in.
+  Only clients on your network or tailnet can connect; hosted connectors such as
+  claude.ai or ChatGPT cannot reach your Umbrel.
 
 
-  The AI assistant (natural-language charts, SQL generation, dashboard building)
-  needs an OpenAI API key in `CB_OPENAI_API_KEY`. Email (invites, password
-  resets, snapshot reports) needs SMTP settings; without them, add teammates via
-  invite links.
+  ⚠️ GOOD TO KNOW
 
 
-  umbrelOS 2.0 or newer is required. Open Chartbrew over HTTPS via Umbrel's
-  launch button, your Tailscale IP, or a `.ts.net` URL. The first start runs all
-  database migrations and can take a couple of minutes. The in-app news feed and
-  update check contact chartbrew.com.
+  umbrelOS 2.0 or newer is required. Pages, sign-up, sign-in, and the rest of
+  the API stay behind Umbrel's login. The Data API (`/api/v1/*`), MCP (`/mcp`),
+  and MCP's OAuth endpoints (`/.well-known/oauth-*`, `/oauth/token`,
+  `/oauth/register`, `/oauth/revoke`, `/mcp/oauth/client-metadata`) bypass it
+  and are authenticated by Chartbrew with API keys or OAuth tokens.
+
+
+  MCP OAuth only accepts the address in `CB_SITE_URL` (default
+  `https://<device>.local:4018`). To connect agents over Tailscale, set it to
+  your `tailscale serve` HTTPS address. Umbrel's own certificate does not cover
+  `.ts.net` names.
+
+
+  Public dashboards, report links, and embedded charts stay behind Umbrel's
+  login. To share them with people who have no Umbrel account, turn off
+  "Require Umbrel login" for this app; Chartbrew still protects private pages
+  and its API with its own accounts. Umbrel hides client IP addresses from
+  apps, so Chartbrew's per-IP rate limits apply to all clients together.
+
+
+  The in-app news feed and update check contact chartbrew.com.
 releaseNotes: >-
-  Initial Umbrel package of Chartbrew 6.0.1 (amd64 and arm64), with PostgreSQL
-  and Redis, per-device encryption keys, a single-origin HTTPS front end that
-  starts in seconds instead of rebuilding the UI on every boot, and direct
-  API/MCP passthrough for AI agents.
+  Security and reliability update for the Chartbrew 6.0.1 package.
+
+
+  Only the Data API, MCP, and MCP's OAuth endpoints now skip Umbrel's login, so
+  nobody on your network can claim the first account before you do. The
+  built-in front end also no longer lets one request's body be read as a second
+  request on the shared API connection.
+
+
+  Scheduled and alert snapshot reports now render: Chartbrew's headless browser
+  loads pages over the app's internal network instead of the public address. A
+  failed database migration now restarts the API instead of leaving it idle.
+  `CB_MAIL_SECURE=false` now works for STARTTLS on port 587, and the Data API is
+  available at `/api/v1`.
 developer: Chartbrew (Depomo Ltd)
 website: https://chartbrew.com
 dependencies: []
@@ -78,12 +97,15 @@ environment:
     services:
       - server
     note: >-
-      Canonical HTTPS URL used for MCP/OAuth metadata, emails, and integration
-      callbacks. Leave unset for https://<device>.local:4018, or set to your
-      Tailscale URL (e.g. https://<node>.<tailnet>.ts.net:4018). Must start with
-      https://.
+      Main HTTPS address for MCP/OAuth metadata, email links, and integration
+      callbacks. Leave unset for https://<device>.local:4018, or set a
+      `tailscale serve` address such as https://<node>.<tailnet>.ts.net. Must
+      start with https://.
   - name: CB_ALLOW_PRIVATE_NETWORK_CALLS
     default: "true"
+    options:
+      - "false"
+      - "true"
     services:
       - server
     note: >-
@@ -109,12 +131,17 @@ environment:
     default: "465"
     services:
       - server
-    note: SMTP port (465 for implicit TLS, 587 with CB_MAIL_SECURE=false).
+    note: SMTP port (465 with CB_MAIL_SECURE=true, 587 with CB_MAIL_SECURE=false).
   - name: CB_MAIL_SECURE
     default: "true"
+    options:
+      - "false"
+      - "true"
     services:
       - server
-    note: Use implicit TLS for SMTP (true for port 465, false for 587/STARTTLS).
+    note: >-
+      true for implicit TLS (usually port 465); false for STARTTLS or plain
+      SMTP (usually port 587).
   - name: CB_MAIL_USER
     services:
       - server

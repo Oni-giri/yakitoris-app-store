@@ -18,6 +18,7 @@ export APP_CHARTBREW_BULLMQ_PASSWORD="$(derive_entropy "${app_entropy_identifier
 # Canonical HTTPS origin for server-generated links (emails, MCP/OAuth metadata,
 # Slack callbacks). APP_PROXY_PORT is assigned after exports.sh is sourced, so
 # keep the manifest port as a fallback. Override with CB_SITE_URL in settings.
-PORT="${APP_PROXY_PORT:-4018}"
-LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"
-export APP_CHARTBREW_SITE_URL="https://${LOCAL_DOMAIN}:${PORT}"
+_chartbrew_port="${APP_PROXY_PORT:-4018}"
+_chartbrew_host="${DEVICE_DOMAIN_NAME:-umbrel.local}"
+export APP_CHARTBREW_SITE_URL="https://${_chartbrew_host}:${_chartbrew_port}"
+unset _chartbrew_port _chartbrew_host
