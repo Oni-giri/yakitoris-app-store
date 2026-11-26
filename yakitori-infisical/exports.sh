@@ -3,6 +3,9 @@
 
 export APP_INFISICAL_POSTGRES_PASSWORD="$(derive_entropy "${app_entropy_identifier}-postgres-password")"
 export APP_INFISICAL_AUTH_SECRET="$(derive_entropy "${app_entropy_identifier}-auth-secret")"
+# Redis sits on Umbrel's shared Docker network, so any other app's container
+# could otherwise read or poison Infisical's cache and job queues.
+export APP_INFISICAL_REDIS_PASSWORD="$(derive_entropy "${app_entropy_identifier}-redis-password")"
 
 # Infisical's InstanceEncryptionKey requires ENCRYPTION_KEY (UTF-8) to decode
 # to 32 bytes (32 hex chars = 128-bit entropy), whereas ROOT_ENCRYPTION_KEY
@@ -22,11 +25,13 @@ APP_INFISICAL_ROOT_KEY_OCT="$(awk -v h="${APP_INFISICAL_ROOT_KEY_HEX}" 'BEGIN {
 export APP_INFISICAL_ROOT_ENCRYPTION_KEY="$(printf '%b' "${APP_INFISICAL_ROOT_KEY_OCT}" | base64 | tr -d '\n')"
 unset APP_INFISICAL_ROOT_KEY_HEX APP_INFISICAL_ROOT_KEY_OCT
 
-# APP_PROXY_PORT is assigned after exports.sh is sourced by Umbrel, so retain
-# the manifest's port as a fallback. DEVICE_DOMAIN_NAME is already available.
-PORT="${APP_PROXY_PORT:-8311}"
-LOCAL_DOMAIN="${DEVICE_DOMAIN_NAME:-umbrel.local}"
-export APP_INFISICAL_SITE_URL="https://${LOCAL_DOMAIN}:${PORT}"
+# APP_PROXY_PORT is not exported yet when Umbrel sources this file, so the
+# fallback (the manifest port) is what applies; keep the two in sync.
+# DEVICE_DOMAIN_NAME is already available.
+_infisical_port="${APP_PROXY_PORT:-8311}"
+_infisical_host="${DEVICE_DOMAIN_NAME:-umbrel.local}"
+export APP_INFISICAL_SITE_URL="https://${_infisical_host}:${_infisical_port}"
+unset _infisical_port _infisical_host
 
 # Never let TRUSTED_PROXY_CIDRS expand to a malformed "/16" when NETWORK_IP is unset.
 # Note: on umbrelOS 2.0, HTTPS LAN ingress reaches AppGateway over 127.0.0.1,

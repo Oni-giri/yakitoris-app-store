@@ -4,9 +4,24 @@
 #   2. API (including Agent Vault, ACME, OIDC discovery, and SCIM), secret-scanning
 #      webhook, SCEP, and EST routes bypass Umbrel's browser login so CLIs, SDKs,
 #      agents, and enrollment clients authenticate directly with Infisical.
+#      Whitelist audit against the v0.167.15 routers (backend/src/server/routes,
+#      backend/src/ee/routes): every /api route runs verifyAuth (JWT, machine
+#      identity, service token, or OAuth) except routes built for external
+#      callers that carry their own credential: machine-identity and LDAP/OIDC/
+#      SSO logins and callbacks, ACME/EST/SCEP/OCSP/CRL for PKI clients, shared-
+#      secret and secret-request links (unguessable id plus key), MFA and
+#      email-token flows (account recovery, password reset; no SMTP by default),
+#      and public CA certificates and JWKS. Self-service sign-up closes when
+#      first-run setup completes (completeSetup({closeSignUp: true})). The only
+#      routes that could take over the instance are POST /api/v1/admin/signup
+#      and /api/v1/admin/bootstrap before setup; INITIAL_SETUP_ACTIVATION_TOKEN
+#      (Umbrel's per-device app password) makes both require a secret only the
+#      owner sees. A PROXY_AUTH_BLACKLIST would not be enough there, because
+#      Fastify decodes percent-escapes the gateway matches literally.
 #   3. Independent per-device secrets (including a 256-bit ROOT_ENCRYPTION_KEY)
 #      are derived from the Umbrel seed in exports.sh.
-#   4. PostgreSQL and Redis (with AOF persistence) store state under APP_DATA_DIR/data.
+#   4. PostgreSQL and password-protected Redis (with AOF persistence) store
+#      state under APP_DATA_DIR/data.
 #   5. All images are pinned to release tags and multi-architecture digests.
 
 services:
@@ -34,7 +49,9 @@ services:
     volumes:
       - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      # Probe over TCP: the temporary server the entrypoint runs during first-boot
+      # initdb listens only on the Unix socket, so a socket probe passes too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U infisical -d infisical"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -44,11 +61,17 @@ services:
     image: redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     restart: on-failure
     stop_grace_period: 30s
-    command: ["redis-server", "--appendonly", "yes"]
+    # The password comes from the environment so it never appears in the
+    # process arguments.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${APP_INFISICAL_REDIS_PASSWORD}
+      REDISCLI_AUTH: ${APP_INFISICAL_REDIS_PASSWORD}
     volumes:
       - ${APP_DATA_DIR}/data/redis:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # redis-cli exits 0 even on NOAUTH, so require the PONG reply.
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -76,7 +99,12 @@ services:
       ROOT_ENCRYPTION_KEY: ${APP_INFISICAL_ROOT_ENCRYPTION_KEY}
       AUTH_SECRET: ${APP_INFISICAL_AUTH_SECRET}
       DB_CONNECTION_URI: postgresql://infisical:${APP_INFISICAL_POSTGRES_PASSWORD}@yakitori-infisical_postgres_1:5432/infisical?sslmode=disable
-      REDIS_URL: redis://yakitori-infisical_redis_1:6379
+      REDIS_URL: redis://:${APP_INFISICAL_REDIS_PASSWORD}@yakitori-infisical_redis_1:6379
+      # /api/* bypasses Umbrel login, so first-run admin sign-up and API
+      # bootstrap must not be open to anyone on the LAN before the owner
+      # finishes setup. Infisical then requires this token; Umbrel shows it as
+      # the app's password (deterministicPassword). Ignored once set up.
+      INITIAL_SETUP_ACTIVATION_TOKEN: ${APP_PASSWORD}
       # Trust X-Forwarded-For only from Umbrel's Docker bridge subnet so external
       # clients cannot spoof proxy headers. Note: umbrelOS 2.0's HTTPS LAN ingress
       # connects to AppGateway over loopback without forwarding the peer IP, so

@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: Infisical
-version: "0.167.15-umbrel.1"
+version: "0.167.15-umbrel.2"
 tagline: Secrets, PKI certificates, KMS, and Agent Vault for teams and AI agents
 icon: https://avatars.githubusercontent.com/u/107880645?s=512&v=4
 description: >-
@@ -16,10 +16,15 @@ description: >-
 
 
   This package runs Infisical's standalone server alongside PostgreSQL and
-  Redis with uniquely derived per-device encryption and signing keys, and
-  disables outbound telemetry, Contentful announcements, and background GitHub
-  update checks by default. On first launch, create your instance administrator
-  account and initial organization; self-service sign-up closes automatically
+  password-protected Redis with uniquely derived per-device encryption and
+  signing keys, and disables outbound telemetry, Contentful announcements, and
+  background GitHub update checks by default. On first launch, create your
+  instance administrator account and initial organization. The setup page asks
+  for an **activation token**: paste the password Umbrel shows for this app
+  (in the dialog when you first open it, or under Credentials in the app's
+  settings). This stops
+  anyone else on your network from claiming the instance before you do; after
+  setup the token is no longer used. Self-service sign-up closes automatically
   once setup completes, and SMTP or SSO can be configured later from the Server
   Admin console.
 
@@ -57,10 +62,13 @@ description: >-
   note that client-certificate mTLS headers cannot be terminated at Umbrel's
   proxy.
 releaseNotes: >-
-  Corrects the Tailscale guidance for `SITE_URL`: use your Tailscale IP
-  (`https://100.x.y.z:8311`), because Umbrel's certificate does not cover
-  `.ts.net` names on this port. A `.ts.net` address works only through
-  `tailscale serve`, without a port. No change to how Infisical runs.
+  Security fixes from a package review. Redis now requires a per-device
+  password, so other apps on your Umbrel can no longer reach Infisical's cache
+  and job queues. First-run setup now requires an activation token, shown as
+  this app's password in Umbrel, so nobody else on your network can claim a
+  freshly installed instance; existing instances that are already set up are
+  unaffected. The database health check is also more reliable on first
+  install.
 developer: Infisical Inc.
 website: https://infisical.com
 dependencies: []
@@ -72,7 +80,7 @@ gallery:
   - https://raw.githubusercontent.com/Infisical/infisical/v0.167.15/img/infisical_github_repo4.png
 path: ""
 defaultUsername: ""
-defaultPassword: ""
+deterministicPassword: true
 environment:
   - name: SITE_URL
     services:
