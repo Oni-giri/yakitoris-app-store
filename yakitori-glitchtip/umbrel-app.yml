@@ -4,72 +4,93 @@ storage:
   dataRoot: data
 category: developer
 name: GlitchTip
-version: "7.0.0"
+version: "7.0.0-umbrel.1"
 tagline: Sentry-compatible error tracking, performance, logs, and uptime monitoring
-icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-glitchtip/icon.png
+icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/6c8d8fc113a1a80b9c38025d63e0bb606f6a0df4/yakitori-glitchtip/icon.png
 description: >-
   GlitchTip is an open-source error tracking platform that speaks the Sentry
   protocol. Point any official Sentry SDK (JavaScript, Python, Go, Ruby, PHP,
   Java/Android, .NET, Rust, Elixir, native/minidump, and more) at a GlitchTip
   DSN and it collects exceptions, stack traces, and breadcrumbs, groups them
-  into issues, and alerts you by email, Slack, Discord, Google Chat, Feishu, or
-  generic webhooks (Mattermost, Rocket.Chat, and more). It also tracks performance transactions, ingests OpenTelemetry logs,
-  symbolicates uploaded source maps, debug files, and ProGuard mappings, and
-  runs uptime monitors with public status pages.
+  into issues, and alerts you by email, Slack, Discord, Microsoft Teams, Google
+  Chat, ntfy, Zulip, Feishu, or generic webhooks (Mattermost, Rocket.Chat, and
+  more). It
+  also tracks performance transactions, ingests OpenTelemetry logs, symbolicates
+  uploaded source maps, debug files, and ProGuard mappings, and runs uptime
+  monitors with public status pages.
 
 
   This package runs GlitchTip's single all-in-one process (web UI, ingest, task
-  worker, and scheduler) alongside PostgreSQL 18 and Valkey, with a per-device
-  SECRET_KEY and database password. Events are kept for 90 days by default.
+  worker, and scheduler) alongside PostgreSQL 18 and password-protected Valkey,
+  with per-device secrets. Events are kept for 90 days by default.
 
 
   🛠️ SET-UP INSTRUCTIONS
 
 
-  Open GlitchTip and click **Register** to create the first account, then
-  create your organization. Sign-up closes after the first account, and
-  invitations can only reach people who already have one, so to add teammates
-  set `ENABLE_USER_REGISTRATION` to `true` in this app's settings while they
+  Always open GlitchTip with `https://` (Umbrel's launch button does this).
+  GlitchTip's login cookies are HTTPS-only, so over plain `http://` the page
+  loads but signing in fails.
+
+
+  Click **Register** to create the first account, then create your
+  organization. Sign-up closes after the first account, and invitations can only
+  reach people who already have one, so to add teammates set
+  `ENABLE_USER_REGISTRATION` to `true` in this app's settings while they
   register, invite them from your organization's Members page, then set it back
-  to `false`.
+  to `false`. Creating more organizations needs a superuser, or
+  `ENABLE_ORGANIZATION_CREATION` set to `true`.
 
 
   Create a project to get its DSN and paste it into your Sentry SDK's `dsn`
   option. The DSN points at `https://<device>.local:8476`. Servers and CI
-  runners that do not trust Umbrel's local certificate can use the same DSN
-  with `http://` instead, because this port also answers plain HTTP. To use a
-  Tailscale `.ts.net` name or another hostname in DSNs and links, set
-  `GLITCHTIP_DOMAIN` in this app's settings.
+  runners that do not trust Umbrel's local certificate can use the same DSN, and
+  `sentry-cli --url`, with `http://` instead, because this port also answers
+  plain HTTP. For HTTPS over Tailscale, set `GLITCHTIP_DOMAIN` to
+  `https://<tailscale-ip>:8476`: Umbrel's certificate covers the device's IP
+  addresses but not `.ts.net` names.
 
 
   🤖 AI ASSISTANTS
 
 
   GlitchTip's built-in MCP server is enabled at `https://<device>.local:8476/mcp`.
-  Connect an MCP client with OAuth or with a GlitchTip API token (Profile → Auth
-  Tokens) sent as `Authorization: Bearer <token>`, and your assistant can read
-  issues, events, traces, and logs.
+  Connect an MCP client with a GlitchTip API token (Profile → Auth Tokens) sent
+  as `Authorization: Bearer <token>`, and your assistant can read issues,
+  events, traces, and logs. OAuth sign-in also works for clients that trust
+  Umbrel's certificate. Only clients on your network or tailnet can connect;
+  hosted connectors such as claude.ai or ChatGPT cannot reach your Umbrel.
 
 
   ⚠️ GOOD TO KNOW
 
 
   umbrelOS 2.0 or newer is required. Browser pages stay behind Umbrel's login,
-  while event ingest and the REST API (`/api/*`), OTLP logs (`/v1/logs`), and
-  MCP (`/mcp/*`) bypass it, so SDKs, `sentry-cli`, and agents authenticate
-  directly with GlitchTip's DSN keys and tokens. Public status pages stay behind
-  Umbrel's login unless you turn off "Require Umbrel login" for this app.
+  while event ingest and the REST API (`/api/*`), OTLP logs (`/v1/logs`), MCP
+  (`/mcp/*`), and its OAuth discovery documents bypass it, so SDKs,
+  `sentry-cli`, and agents authenticate directly with GlitchTip's DSN keys and
+  tokens. Public status pages stay behind Umbrel's login unless you turn off
+  "Require Umbrel login" for this app. Umbrel's proxy hides client IP
+  addresses, so GlitchTip records every visitor as 127.0.0.1 and its login rate
+  limit is shared by everyone.
 
 
   Email is off until you set `EMAIL_URL` (for example
   `smtp://user:password@smtp.example.com:587`) and `DEFAULT_FROM_EMAIL`; without
   it there are no email alerts, verification mails, or password resets, so keep
-  your password somewhere safe. Uptime monitors cannot target LAN addresses
-  until you enable `GLITCHTIP_UPTIME_ALLOW_PRIVATE_IPS`.
+  your password somewhere safe. Uptime monitors and alert webhooks cannot reach
+  LAN or Umbrel addresses (for example Mattermost or ntfy on this device) until
+  you enable `GLITCHTIP_UPTIME_ALLOW_PRIVATE_IPS` or
+  `GLITCHTIP_ALLOW_PRIVATE_IPS`.
 releaseNotes: >-
-  Initial Umbrel package of GlitchTip 7.0.0 (amd64 and arm64), with PostgreSQL
-  18, persistent Valkey, HTTPS sessions on umbrelOS 2.0+, direct SDK, API, OTLP,
-  and MCP passthrough, and the built-in MCP server enabled for AI assistants.
+  Security and compatibility fixes from a package review. Valkey now requires a
+  per-device password, so other apps on your Umbrel can no longer read
+  GlitchTip's login sessions. `sentry-cli` source-map and debug-file uploads now
+  work when you connect over `http://` or from machines that cannot resolve
+  `.local`. The public API schema is turned off, and login-page settings stay
+  behind Umbrel's login. New settings let alert webhooks reach services on your
+  network and allow creating more organizations. Health checks are more
+  reliable on first install. You stay signed in across this update.
 developer: Burke Software and Consulting
 website: https://glitchtip.com
 dependencies: []
@@ -89,9 +110,9 @@ environment:
       - web
     note: >-
       Base URL used in DSNs, email links, and MCP/OAuth metadata. Leave unset for
-      https://<device>.local:8476, or set your Tailscale URL (e.g.
-      https://<node>.<tailnet>.ts.net:8476). An http:// URL also disables Secure
-      cookies.
+      https://<device>.local:8476, or use your Tailscale IP
+      (https://100.x.y.z:8476); Umbrel's certificate does not cover .ts.net
+      names. An http:// URL also turns off Secure cookies.
   - name: EMAIL_URL
     services:
       - web
@@ -116,6 +137,16 @@ environment:
       Allow anyone who can reach GlitchTip to create an account. When false
       (default), only the first account can sign up and invitations only reach
       existing accounts; turn it on while teammates register.
+  - name: ENABLE_ORGANIZATION_CREATION
+    default: "false"
+    options:
+      - "false"
+      - "true"
+    services:
+      - web
+    note: >-
+      Allow any user to create additional organizations. When false (default),
+      only superusers can create organizations after the first one.
   - name: GLITCHTIP_UPTIME_ALLOW_PRIVATE_IPS
     default: "false"
     options:
@@ -127,6 +158,17 @@ environment:
       Let uptime monitors check LAN, loopback, and Docker addresses such as
       other apps on this Umbrel. Off by default to block SSRF against your local
       network.
+  - name: GLITCHTIP_ALLOW_PRIVATE_IPS
+    default: "false"
+    options:
+      - "false"
+      - "true"
+    services:
+      - web
+    note: >-
+      Let alert webhooks (Mattermost, Rocket.Chat, ntfy, Zulip, and others) post
+      to LAN, loopback, and Docker addresses such as apps on this Umbrel. Off by
+      default to block SSRF against your local network.
   - name: GLITCHTIP_ENABLE_MCP
     default: "true"
     options:

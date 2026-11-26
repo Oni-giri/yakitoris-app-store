@@ -1,20 +1,36 @@
 # GlitchTip 7.0.0, adapted for umbrelOS 2.0+:
 #   1. Served over Umbrel's HTTPS proxy so Secure session cookies and WebAuthn
-#      security keys work. The same port also answers plain HTTP, so SDKs that
-#      do not trust Umbrel's local CA can send events to an http:// DSN.
-#   2. Event ingest (/api/<project>/envelope|store|security|minidump), the REST API used
-#      by sentry-cli and API tokens, OTLP logs (/v1/logs), and the built-in MCP
-#      server (/mcp plus its OAuth discovery documents) bypass Umbrel's browser
-#      login. GlitchTip still authenticates every one of them itself, by DSN
-#      key, API token, OAuth token, or session.
+#      security keys work. The same port also answers plain HTTP, so SDKs and
+#      sentry-cli that do not trust Umbrel's local CA can use an http:// DSN or
+#      URL; chunk uploads therefore return relative URLs (see web environment).
+#      Browsers must use https://, because the session cookies are Secure.
+#   2. Machine paths bypass Umbrel's browser login; everything else stays behind
+#      it. Whitelist audit against the v7.0.0 router (glitchtip/urls.py,
+#      glitchtip/api/api.py, apps/*/api.py):
+#        /api, /api/*   Callers: Sentry SDKs (envelope, store, security,
+#                       minidump), sentry-cli and API-token scripts, uptime
+#                       heartbeats, sentry-wizard. Auth: DSN key, API token or
+#                       session on every route, except heartbeat_check (unguessable
+#                       monitor UUID), sentry-wizard (random 64-char hash), invite
+#                       lookups (signed token), the API root /api/0/, health
+#                       probes, and a JSON 404 fallback. Sign-up, login, and
+#                       password reset live under /_allauth/ and stay protected.
+#                       /api/settings/ (login-page data: registration state, SSO
+#                       apps) is blacklisted; OpenAPI docs are disabled.
+#        /v1/logs       OTLP log exporters; DSN key in the auth header.
+#        /mcp, /mcp/*   MCP clients; GlitchTip API token or MCP OAuth access
+#                       token. /mcp/token, /register, /revoke are OAuth token
+#                       endpoints; the /oauth/authorize/ consent page stays
+#                       behind Umbrel login.
+#        /.well-known/oauth-*   Public OAuth discovery documents for MCP.
 #   3. One GlitchTip process serves the web UI, ingests events, runs the task
 #      worker and scheduler, and applies database migrations on every start
 #      (upstream's default bin/start.sh).
 #   4. PostgreSQL 18 (with the max_locks_per_transaction GlitchTip's partitioned
-#      tables need) and Valkey (AOF-persisted, so sessions and queued tasks
-#      survive restarts) store state under APP_DATA_DIR/data.
-#   5. Per-device SECRET_KEY and database password are derived from the Umbrel
-#      seed in exports.sh.
+#      tables need) and password-protected Valkey (AOF-persisted, so sessions
+#      and queued tasks survive restarts) store state under APP_DATA_DIR/data.
+#   5. Per-device SECRET_KEY, database password, and Valkey password are derived
+#      from the Umbrel seed in exports.sh.
 #   6. All images are pinned to release tags and multi-architecture digests.
 
 services:
@@ -25,8 +41,10 @@ services:
       # SDKs, sentry-cli, OpenTelemetry exporters, uptime heartbeats, and MCP
       # clients cannot complete Umbrel's login page; they authenticate with
       # GlitchTip directly. Include each exact prefix and its /* wildcard so a
-      # bare prefix probe does not 302 to app-auth.
+      # bare prefix probe does not 302 to app-auth. See the audit above.
       PROXY_AUTH_WHITELIST: "/api,/api/*,/v1/logs,/v1/logs/*,/mcp,/mcp/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*"
+      # Only the login page reads these; keep instance details behind Umbrel login.
+      PROXY_AUTH_BLACKLIST: "/api/settings,/api/settings/*"
 
   postgres:
     image: postgres:18.7-alpine3.24@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
@@ -46,11 +64,13 @@ services:
       # (/var/lib/postgresql/18/docker), so mount the parent directory.
       - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
+      # Probe over TCP: the temporary server the entrypoint runs during first-boot
+      # initdb listens only on the Unix socket, so a socket probe passes too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U glitchtip -d glitchtip"]
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 20s
+      start_period: 30s
 
   valkey:
     image: valkey/valkey:9.2.0-alpine3.24@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
@@ -58,12 +78,17 @@ services:
     stop_grace_period: 30s
     # GlitchTip keeps login sessions, MCP OAuth tokens, its cache, and its task
     # queue here. AOF persistence keeps users signed in and queued alerts
-    # intact across restarts and app updates.
-    command: ["valkey-server", "--appendonly", "yes"]
+    # intact across restarts and app updates. The password comes from the
+    # environment so it never appears in the process arguments.
+    command: ["sh", "-c", "exec valkey-server --appendonly yes --requirepass \"$$VALKEY_PASSWORD\""]
+    environment:
+      VALKEY_PASSWORD: ${APP_GLITCHTIP_VALKEY_PASSWORD}
+      VALKEYCLI_AUTH: ${APP_GLITCHTIP_VALKEY_PASSWORD}
     volumes:
       - ${APP_DATA_DIR}/data/valkey:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      # valkey-cli exits 0 even on NOAUTH, so require the PONG reply.
+      test: ["CMD-SHELL", "valkey-cli -h 127.0.0.1 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -89,21 +114,32 @@ services:
       HOME: /tmp
       SECRET_KEY: ${APP_GLITCHTIP_SECRET_KEY}
       DATABASE_URL: postgres://glitchtip:${APP_GLITCHTIP_POSTGRES_PASSWORD}@yakitori-glitchtip_postgres_1:5432/glitchtip
-      VALKEY_URL: redis://yakitori-glitchtip_valkey_1:6379/0
+      VALKEY_URL: redis://:${APP_GLITCHTIP_VALKEY_PASSWORD}@yakitori-glitchtip_valkey_1:6379/0
       # Base URL for DSNs, email links, and MCP/OAuth metadata. An https URL
       # also makes GlitchTip mark session and CSRF cookies Secure.
       GLITCHTIP_DOMAIN: ${APP_GLITCHTIP_DOMAIN}
-      # The first account can always sign up; after that, new users join by
-      # invitation only. Umbrel's login already gates the sign-up page, but this
-      # keeps registration closed if "Require Umbrel login" is ever turned off.
+      # sentry-cli uploads source maps and debug files to whatever URL the
+      # chunk-upload endpoint returns. An absolute URL would be built from
+      # GLITCHTIP_DOMAIN (https://<device>.local), breaking CI runners that use
+      # http:// or cannot resolve .local; a relative URL reuses the CLI's --url.
+      GLITCHTIP_CHUNK_UPLOAD_USE_RELATIVE_URL: "true"
+      # /api/* bypasses Umbrel login, so do not publish the API schema there.
+      ENABLE_OPENAPI: "False"
+      # The first account can always sign up; after that, new users join only
+      # while registration is re-enabled from the app's Environment settings.
+      # Umbrel's login already gates the sign-up page, but this keeps
+      # registration closed if "Require Umbrel login" is ever turned off.
       ENABLE_USER_REGISTRATION: "false"
+      # Only superusers may create further organizations unless enabled.
       ENABLE_ORGANIZATION_CREATION: "false"
       # Built-in MCP server at /mcp so AI assistants can read issues, events,
       # traces, and logs with a GlitchTip API token or OAuth.
       GLITCHTIP_ENABLE_MCP: "true"
-      # Upstream's SSRF guard: uptime monitors may not target LAN addresses
-      # unless this is enabled from the app's Environment settings.
+      # Upstream's SSRF guards: uptime monitors and alert webhooks may not
+      # target LAN, loopback, or Docker addresses unless enabled from the app's
+      # Environment settings (e.g. for Mattermost or ntfy on this Umbrel).
       GLITCHTIP_UPTIME_ALLOW_PRIVATE_IPS: "false"
+      GLITCHTIP_ALLOW_PRIVATE_IPS: "false"
       GLITCHTIP_RETENTION_DAYS: "90"
       # Email stays disabled until EMAIL_URL (or another transport) is set in
       # the app's Environment settings: no verification mails, no password
@@ -112,7 +148,9 @@ services:
     volumes:
       - ${APP_DATA_DIR}/data/uploads:/code/uploads
     healthcheck:
-      test: ["CMD", "python", "/code/healthcheck.py"]
+      # Same probe as upstream's healthcheck.py, against 127.0.0.1 instead of
+      # localhost so it never depends on IPv6 name resolution.
+      test: ["CMD", "python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/_health/', timeout=5).status == 200 else 1)"]
       interval: 15s
       timeout: 10s
       retries: 10
