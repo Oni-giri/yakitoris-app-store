@@ -1,0 +1,211 @@
+name: Update Oxynote
+
+# Opens a pull request (rather than committing to master) because an Oxynote
+# release can change its launcher's environment schema or data layout, so each
+# bump deserves a review and an install test before it reaches Umbrel devices.
+
+on:
+  schedule:
+    - cron: "47 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-oxynote
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out app store
+        uses: actions/checkout@v4
+
+      - name: Find latest published Oxynote image
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          ref="$(gh api repos/oxynote/oxynote/releases/latest --jq '.tag_name')"
+          case "$ref" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Unexpected latest release tag: $ref" >&2; exit 1 ;;
+          esac
+          version="${ref#v}"
+          python3 - "$version" "$ref" <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import sys
+          import urllib.error
+          import urllib.request
+
+          version, ref = sys.argv[1], sys.argv[2]
+          repo = "oxynote/oxynote"
+          token_url = f"https://ghcr.io/token?scope=repository:{repo}:pull"
+          with urllib.request.urlopen(token_url, timeout=15) as r:
+              token = json.loads(r.read().decode())["token"]
+
+          accept = (
+              "application/vnd.oci.image.index.v1+json, "
+              "application/vnd.docker.distribution.manifest.list.v2+json"
+          )
+          req = urllib.request.Request(
+              f"https://ghcr.io/v2/{repo}/manifests/{version}",
+              headers={"Authorization": f"Bearer {token}", "Accept": accept},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  digest = r.headers["Docker-Content-Digest"]
+                  index = json.loads(r.read().decode())
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print(f"ghcr.io/{repo}:{version} is not published yet; skipping update", file=sys.stderr)
+                  print("ready=false")
+                  sys.exit(0)
+              raise
+
+          # The package promises amd64 and arm64; never pin an index missing either.
+          arches = {
+              m.get("platform", {}).get("architecture")
+              for m in index.get("manifests", [])
+              if m.get("platform", {}).get("os") == "linux"
+          }
+          missing = {"amd64", "arm64"} - arches
+          if missing:
+              print(f"ghcr.io/{repo}:{version} lacks {sorted(missing)}; skipping update", file=sys.stderr)
+              print("ready=false")
+              sys.exit(0)
+
+          print("ready=true")
+          print(f"ref={ref}")
+          print(f"version={version}")
+          print(f"digest={digest}")
+          PY
+
+      - name: Update Oxynote pins
+        id: pins
+        if: steps.release.outputs.ready == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          REF: ${{ steps.release.outputs.ref }}
+          DIGEST: ${{ steps.release.outputs.digest }}
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          ref = os.environ["REF"]
+          digest = os.environ["DIGEST"]
+
+          compose_path = Path("yakitori-oxynote/docker-compose.yml")
+          compose_text = compose_path.read_text()
+          # Both the one-shot init service and the app share one image pin.
+          new_compose, n_img = re.subn(
+              r"ghcr\.io/oxynote/oxynote:\S+",
+              f"ghcr.io/oxynote/oxynote:{version}@{digest}",
+              compose_text,
+          )
+          if n_img != 2:
+              raise SystemExit(f"Expected 2 oxynote image references, matched {n_img}")
+          new_compose, n_head = re.subn(
+              r"^# Oxynote [0-9]+\.[0-9]+\.[0-9]+ ",
+              f"# Oxynote {version} ",
+              new_compose,
+              count=1,
+              flags=re.M,
+          )
+          if n_head != 1:
+              raise SystemExit("Expected the version in the compose header comment")
+          compose_path.write_text(new_compose)
+
+          app_path = Path("yakitori-oxynote/umbrel-app.yml")
+          app_text = app_path.read_text()
+          new_app, n_ver = re.subn(
+              r'^version: "[0-9]+\.[0-9]+\.[0-9]+"$',
+              f'version: "{version}"',
+              app_text,
+              flags=re.M,
+          )
+          if n_ver != 1:
+              raise SystemExit(f"Expected 1 version field in umbrel-app.yml, matched {n_ver}")
+
+          # Move the icon and gallery to the new tag only when every asset
+          # still exists there; otherwise keep the old, working URLs.
+          asset_re = re.compile(r"https://raw\.githubusercontent\.com/oxynote/oxynote/v[0-9]+\.[0-9]+\.[0-9]+/(\S+)")
+          paths = sorted(set(asset_re.findall(new_app)))
+
+          def exists(path):
+              url = f"https://raw.githubusercontent.com/oxynote/oxynote/{ref}/{path}"
+              req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "yakitori-update-oxynote"})
+              try:
+                  with urllib.request.urlopen(req, timeout=15):
+                      return True
+              except urllib.error.URLError:
+                  return False
+
+          if paths and all(exists(p) for p in paths):
+              new_app = asset_re.sub(
+                  lambda m: f"https://raw.githubusercontent.com/oxynote/oxynote/{ref}/{m.group(1)}",
+                  new_app,
+              )
+          else:
+              print("Some icon/gallery assets are missing at the new tag; keeping the old URLs")
+
+          if new_app != app_text:
+              new_app, n_notes = re.subn(
+                  # (?m) only: with (?s), ".*" would cross newlines and
+                  # swallow every key after releaseNotes.
+                  r"(?m)^releaseNotes: >-\n(?:  .*\n?)+",
+                  f"releaseNotes: >-\n  Updates Oxynote to {version}. See what changed upstream:\n  https://github.com/oxynote/oxynote/releases/tag/{ref}\n",
+                  new_app,
+                  count=1,
+              )
+              if n_notes != 1:
+                  raise SystemExit("Expected a releaseNotes block in umbrel-app.yml")
+          app_path.write_text(new_app)
+          PY
+
+      - name: Open update pull request
+        if: steps.release.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          REF: ${{ steps.release.outputs.ref }}
+        run: |
+          set -eu
+          if git diff --quiet -- yakitori-oxynote; then
+            echo "Oxynote is already current"
+            exit 0
+          fi
+
+          branch="update/oxynote-${VERSION}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "Branch $branch already exists; an update for ${VERSION} is pending review"
+            exit 0
+          fi
+
+          git config user.name yakitori
+          git config user.email 89288375+Oni-giri@users.noreply.github.com
+          git switch -c "$branch"
+          git add yakitori-oxynote
+          git commit -m "yakitori-oxynote: update to upstream ${VERSION}"
+          git push origin "$branch"
+
+          body="Bumps Oxynote to [${REF}](https://github.com/oxynote/oxynote/releases/tag/${REF}) (multi-arch image digest pinned).
+
+          Before merging, check upstream's release notes and docker/prod/README.md for new or renamed OXYNOTE_* variables (an unknown one is a boot error) and data-layout changes, then test an install or update on umbrelOS 2.0."
+
+          if ! gh pr create --base "${GITHUB_REF_NAME}" --head "$branch" \
+              --title "yakitori-oxynote: update to upstream ${VERSION}" \
+              --body "$body"; then
+            compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${branch}?expand=1"
+            echo "::warning title=Pull request not created::Pushed ${branch}, but GitHub Actions may not create pull requests in this repository (Settings > Actions > General > Workflow permissions). Open it manually: ${compare}"
+          fi

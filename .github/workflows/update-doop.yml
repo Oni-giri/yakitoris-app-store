@@ -121,7 +121,9 @@ jobs:
 
           if new_app != app_text:
               new_app = re.sub(
-                  r"(?ms)^releaseNotes: >-\n(?:  .*\n?)+",
+                  # (?m) only: with (?s), ".*" would cross newlines and
+                  # swallow every key after releaseNotes.
+                  r"(?m)^releaseNotes: >-\n(?:  .*\n?)+",
                   f"releaseNotes: >-\n  Updates Doop to {version}. See what changed upstream:\n  https://github.com/kgoedecke/doop/releases/tag/{ref}\n",
                   new_app,
                   count=1,
