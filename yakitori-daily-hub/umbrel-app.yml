@@ -1,0 +1,93 @@
+manifestVersion: 2.0
+id: yakitori-daily-hub
+category: files
+name: DailyHub
+version: "0.2.7"
+tagline: A calm morning command center for projects, tasks, and daily habits
+icon: https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/scripts/macos/icon-1024.png
+description: >-
+  DailyHub is a personal command center for people who juggle more than one
+  project at a time: founders, consultants, indie builders, and anyone with
+  client work, side projects, and a few daily habits they refuse to skip. It
+  does not replace Linear, Jira, or Notion; it is the morning surface above
+  them that answers what is open, what belongs where, what must happen today,
+  and what you already finished.
+
+
+  Plan the day on **Today** (quick add, nudges, today's habits, open work
+  grouped by project, and an inbox for loose ends), pin projects or tasks in
+  **Focus mode**, and jump anywhere with the `⌘K` / `Ctrl+K` command palette.
+  Track **Projects** with status, due dates, milestones, and logos,
+  **Habits** with weekday schedules and 14-day consistency, and progress in
+  **Analytics** (completions over time, per-project breakdown, and weekday
+  patterns). Light and dark themes are built in.
+
+
+  DailyHub is built for one person: there are no accounts, teams, or
+  notifications, and it has no login of its own. Umbrel's app login protects
+  every page, so keep it enabled. All data lives in a single SQLite database
+  plus uploaded project logos in this app's data folder on your Umbrel.
+
+
+  AI assistants: DailyHub includes a built-in MCP server, so Claude, Cursor,
+  and other MCP clients can list, create, and update projects, tasks, inbox
+  items, and habits. Connect them to `http://<device>.local:8771/mcp` (or your
+  Tailscale IP) with the header `Authorization: Bearer <password>`, using the
+  password shown in this app's credentials in Umbrel. Only `/mcp` bypasses
+  Umbrel's login, and it rejects every request without that token.
+
+
+  Set your timezone in this app's Environment settings (`TZ`, for example
+  `Europe/Berlin`): the server decides when a day starts, and without it habits
+  and "today" roll over at UTC midnight. DailyHub answers only to
+  `<device>.local`, IP addresses, and other local names to block DNS-rebinding
+  attacks; to open it by a Tailscale MagicDNS `*.ts.net` name, a Tor address,
+  or a reverse-proxy domain, add that name to `DAILYHUB_ALLOWED_HOSTS`.
+
+
+  umbrelOS 2.0 or newer is required.
+releaseNotes: >-
+  Initial Umbrel package of DailyHub 0.2.7 (amd64 and arm64), with Umbrel's
+  login protecting the app, a ready-to-use MCP bearer token derived from the
+  app password, and Environment settings for the timezone and extra allowed
+  hostnames.
+developer: Basel Husam
+website: https://baselhusam.github.io/daily-hub/
+dependencies: []
+repo: https://github.com/baselhusam/daily-hub
+support: https://github.com/baselhusam/daily-hub/issues
+port: 8771
+gallery:
+  - https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/docs/assets/gallery/1270x760/02-today.png
+  - https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/docs/assets/gallery/1270x760/03-focus.png
+  - https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/docs/assets/gallery/1270x760/04-projects.png
+  - https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/docs/assets/gallery/1270x760/06-habits.png
+  - https://raw.githubusercontent.com/baselhusam/daily-hub/v0.2.7/docs/assets/gallery/1270x760/07-analytics.png
+path: ""
+defaultUsername: ""
+deterministicPassword: true
+environment:
+  - name: TZ
+    services:
+      - web
+    note: >-
+      Your IANA timezone, for example Europe/Berlin or America/New_York. The
+      server decides when a day starts; unset means UTC.
+  - name: DAILYHUB_ALLOWED_HOSTS
+    services:
+      - web
+    note: >-
+      Optional comma-separated extra hostnames DailyHub answers to, for example
+      umbrel.tail1234.ts.net. <device>.local, IP addresses, and other local
+      names always work; any other hostname gets a 403.
+  - name: DAILYHUB_MCP_ENABLED
+    services:
+      - web
+    options:
+      - "true"
+      - "false"
+    note: >-
+      Set to false to turn off the /mcp endpoint for AI assistants entirely.
+      Enabled by default, protected by the app password as bearer token.
+submitter: Yakitori
+submission: https://github.com/Oni-giri/yakitoris-app-store

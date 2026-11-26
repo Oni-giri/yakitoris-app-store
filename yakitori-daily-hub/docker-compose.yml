@@ -1,0 +1,65 @@
+# DailyHub 0.2.7 (Next.js + SQLite, single container), adapted for umbrelOS:
+#   1. DailyHub has no login of its own, so every page stays behind Umbrel's
+#      app login. Only /mcp bypasses it: MCP clients cannot complete Umbrel's
+#      login page and authenticate with DailyHub's own bearer token instead.
+#   2. The MCP bearer token is Umbrel's deterministic app password (shown in
+#      the app's credentials dialog). Upstream's Docker image ships without a
+#      token, which leaves /mcp rejecting every request.
+#   3. The image runs as uid 1001 (nextjs). Umbrel creates APP_DATA_DIR/data
+#      owned by uid 1000 (or root), so a one-shot root init service (reusing
+#      the same image) hands the data directory to uid 1001. The app container
+#      itself stays non-root.
+#   4. Umbrel's gateway forwards the browser's Host header unchanged, so
+#      `<device>.local`, IP addresses, and single-label names pass DailyHub's
+#      DNS-rebinding host check as-is. Other names (Tailscale `*.ts.net`,
+#      `.onion`, a reverse-proxy domain) go in DAILYHUB_ALLOWED_HOSTS via the
+#      app's Environment settings.
+#   5. `exec` replaces the shell with node after migrations so SIGTERM reaches
+#      the Next.js server on stop.
+#   6. SQLite database (data.db) and uploaded project logos persist under
+#      APP_DATA_DIR/data. Migrations run on every start.
+#   7. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: yakitori-daily-hub_web_1
+      APP_PORT: 9999
+      PROXY_AUTH_WHITELIST: "/mcp,/mcp/*"
+
+  init:
+    image: ghcr.io/baselhusam/daily-hub:0.2.7@sha256:6b3b1cec43b7a8ba617031920ed98250e218d6f9379eb959b8905fb68e9cb5a1
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - find /app/data -xdev \( ! -user 1001 -o ! -group 1001 \) -exec chown -h 1001:1001 {} +
+    restart: on-failure
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+
+  web:
+    image: ghcr.io/baselhusam/daily-hub:0.2.7@sha256:6b3b1cec43b7a8ba617031920ed98250e218d6f9379eb959b8905fb68e9cb5a1
+    restart: on-failure
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - node node_modules/prisma/build/index.js migrate deploy && exec node server.js
+    environment:
+      DAILYHUB_DATA_DIR: /app/data
+      DATABASE_URL: file:/app/data/data.db
+      DAILYHUB_MCP_TOKEN: ${APP_PASSWORD}
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9999/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s

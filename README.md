@@ -21,6 +21,7 @@ https://github.com/Oni-giri/yakitoris-app-store
 | [BrowserPier](https://github.com/Oni-giri/browser-pier) | `yakitori-browserpier` | Developer | `7436` (`+7438` WebRTC) | `amd64` | Persistent Chromium browser profiles your AI agents can borrow via CDP, REST, or MCP |
 | [Chartbrew](https://github.com/chartbrew/chartbrew) | `yakitori-chartbrew` | Developer | `4018` (HTTPS) | `amd64`, `arm64` | Live dashboards and reports from SQL/NoSQL databases and APIs, with an AI assistant, Data API, and MCP server |
 | [ChartDB](https://github.com/chartdb/chartdb) | `yakitori-chartdb` | Developer | `8754` (HTTPS) | `amd64`, `arm64` | Browser-based ER database diagram editor with Smart Query, SQL DDL, and DBML import/export |
+| [DailyHub](https://github.com/baselhusam/daily-hub) | `yakitori-daily-hub` | Files | `8771` | `amd64`, `arm64` | Personal command center for projects, tasks, and daily habits, with a built-in MCP server |
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `yakitori-deepseek-harness` | AI | `8734` | `amd64`, `arm64` | DeepSeek's open-source agent harness in your browser with local workspace storage |
 | [Doop](https://github.com/kgoedecke/doop) | `yakitori-doop` | Files | `4400` | `amd64` | Multiplayer real-time design canvas for humans and AI agents with built-in MCP |
 | [EdenText](https://github.com/stffnb/edentext) | `yakitori-edentext` | Files | `8748` (HTTPS) | `amd64`, `arm64` | Local-first browser word processor for `.docx` and `.odt` with optional AI and dictation proxies |
@@ -34,5 +35,5 @@ https://github.com/Oni-giri/yakitoris-app-store
 
 ## Notes
 
-- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartbrew`, `yakitori-chartdb`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-maxun`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
+- **`manifestVersion: 2` / `2.0` apps** (`yakitori-browserpier`, `yakitori-chartbrew`, `yakitori-chartdb`, `yakitori-daily-hub`, `yakitori-doop`, `yakitori-edentext`, `yakitori-glitchtip`, `yakitori-infisical`, `yakitori-itsaplan`, `yakitori-maxun`, `yakitori-oxynote`, `yakitori-tirreno`) require **umbrelOS 2.0 or newer**.
 - **Image pinning:** Application and infrastructure images are pinned to release tags and `@sha256:...` digests for reproducible installs and updates.
