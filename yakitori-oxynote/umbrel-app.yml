@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: developer
 name: Oxynote
-version: "0.11.0"
+version: "0.11.0-umbrel.1"
 tagline: Engineering wiki with live metrics, logs, and reviewable pages
 icon: https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/web/public/web-app-manifest-512x512.png
 description: >-
@@ -32,32 +32,37 @@ description: >-
   Sentry is disabled by default.
 
 
-  First login: sign in as `admin@example.com` with password
-  `oxynote-admin-1234`, then change the email, password, and workspace name in
-  Settings right away. Nobody can sign up without an invitation. No email
-  server is configured by default, so invitation links are copied by hand from
-  workspace settings and password reset is off. A forgotten password cannot be
-  recovered unless you set `OXYNOTE_SMTP_DSN` in this app's settings.
+  First login: sign in as `admin@example.com` with the password shown for this
+  app in Umbrel (generated for your device and set automatically a minute or
+  so after the first start), then change the email and workspace name in
+  Settings. Nobody can sign up without an invitation. No email server is
+  configured by default, so invitation links are copied by hand from workspace
+  settings and password reset is off. A forgotten password cannot be recovered
+  unless you set `OXYNOTE_SMTP_DSN` in this app's settings.
 
 
-  umbrelOS 2.0 or newer is required. Open Oxynote through Umbrel's HTTPS launch
-  button (`https://<device>.local:8766`) and keep using that hostname. Sign-in
-  cookies, WebSockets, invitation links, and MCP are bound to it, so opening the
-  app by IP address will not sign you in. To use a Tailscale `.ts.net` address
-  instead, set `OXYNOTE_PUBLIC_URL` in this app's settings.
+  umbrelOS 2.0 or newer is required. Oxynote works from `https://<device>.local:8766`,
+  your Umbrel's LAN IP, its Tailscale IP, or a `tailscale serve` address; plain
+  `http://` page loads are sent to HTTPS because sign-in cookies are Secure.
+  Invitation links and MCP use one canonical address,
+  `https://<device>.local:8766` by default; set `OXYNOTE_PUBLIC_URL` in this
+  app's settings to use your Tailscale address there instead.
 
 
-  MCP clients connect to `https://<device>.local:8766/core/api/mcp`, which
-  bypasses Umbrel's login along with the OAuth discovery, registration, and
-  token endpoints. MCP clients authenticate with Oxynote's own OAuth tokens
-  and need your approval in the browser. Clients must trust your Umbrel's local
-  HTTPS certificate (for example via `NODE_EXTRA_CA_CERTS`). Data sources on
-  the Umbrel host are reachable at `host.docker.internal`; for SQL sources,
-  use a read-only database user.
+  ⚠️ GOOD TO KNOW: MCP clients connect to `<canonical address>/core/api/mcp`,
+  which bypasses Umbrel's login along with the OAuth discovery, client
+  registration, token, and revoke endpoints and the signed GitHub/Slack webhook
+  endpoints. MCP clients authenticate with Oxynote's own OAuth tokens and need
+  your approval in a signed-in browser; only clients on your network or tailnet
+  can reach them. Clients must trust your Umbrel's local HTTPS certificate (for
+  example via `NODE_EXTRA_CA_CERTS`). Data sources on the Umbrel host are
+  reachable at `host.docker.internal`; for SQL sources, use a read-only
+  database user.
 releaseNotes: >-
-  Initial Umbrel package of Oxynote 0.11.0 (amd64 and arm64), with HTTPS and
-  MCP support on umbrelOS 2.0+, crash reporting off by default, and optional
-  email and AI assistant settings.
+  Sign-in now works from any address your Umbrel answers on: the LAN IP, a
+  Tailscale IP, or `tailscale serve`, not just `<device>.local`. The admin
+  password is replaced with the password Umbrel shows for this app, unless you
+  already changed it yourself; plain `http://` page loads now go to HTTPS.
 developer: Oxynote
 website: https://oxynote.io
 dependencies: []
@@ -73,7 +78,7 @@ gallery:
   - https://raw.githubusercontent.com/oxynote/oxynote/v0.11.0/docs/images/mcp-dark.webp
 path: ""
 defaultUsername: "admin@example.com"
-defaultPassword: "oxynote-admin-1234"
+deterministicPassword: true
 backupIgnore:
   # Rebuilt from PostgreSQL automatically when missing.
   - data/search
@@ -82,11 +87,13 @@ environment:
   - name: OXYNOTE_PUBLIC_URL
     services:
       - web
+      - proxy
+      - bootstrap
     note: >-
-      The HTTPS origin you open Oxynote at, with no path. Leave unset for
-      https://<device>.local:8766, or set your Tailscale URL (for example
-      https://<node>.<tailnet>.ts.net:8766). Sign-in, WebSockets, invitation
-      links, and MCP only work on this origin.
+      Canonical HTTPS origin, with no path, used for invitation links and MCP.
+      Leave unset for https://<device>.local:8766, or set your Tailscale address
+      (for example https://100.x.y.z:8766). The web app works from any of your
+      Umbrel's addresses either way.
   - name: OXYNOTE_SMTP_DSN
     services:
       - web

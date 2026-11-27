@@ -1,33 +1,46 @@
 # Oxynote 0.11.0 all-in-one image (Caddy, Nuxt web, Go core, auth-realtime,
 # and an embedded PostgreSQL 18), adapted for umbrelOS 2.0+:
-#   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) at one canonical
-#      origin (exports.sh). Oxynote binds trusted origins, the cookie domain,
-#      WebSockets, and its MCP OAuth resource to that origin, and turns MCP
-#      off on plain-HTTP non-loopback origins.
-#   2. Only MCP, the OAuth discovery and client-registration/token/revoke
-#      endpoints MCP clients call, and signature-verified GitHub/Slack
-#      webhooks bypass Umbrel's login. Password sign-in and every page stay
-#      behind it because the first boot creates a well-known default admin.
-#   3. The image runs as uid 65532 and its embedded PostgreSQL cannot run
+#   1. Oxynote binds its browser URLs, trusted origins, session cookie domain,
+#      WebSockets, and MCP OAuth resource to one public origin (exports.sh,
+#      overridable with OXYNOTE_PUBLIC_URL). A small nginx router in front
+#      (proxy) rewrites those per request so the same instance works from
+#      <device>.local, the LAN IP, a Tailscale IP, or `tailscale serve`, and
+#      sends plain-HTTP page loads to HTTPS (session cookies are Secure). MCP
+#      clients use the canonical origin.
+#   2. Umbrel login stays on. Whitelist audit (every path checked against the
+#      v0.11.0 Caddyfile, core router, and better-auth plugins):
+#      - /core/api/mcp: MCP clients; OAuth bearer tokens checked by core's MCP
+#        middleware on every request.
+#      - /.well-known/oauth-protected-resource, oauth-authorization-server,
+#        openid-configuration: public discovery documents MCP clients fetch
+#        before they have a token; read-only.
+#      - /api/auth/oauth2/register, token, revoke: RFC 7591 registration (a
+#        client can do nothing until a signed-in user consents) and the token
+#        and revoke endpoints, which check client and grant credentials.
+#        Password sign-in, sign-up, authorize, and consent stay behind Umbrel
+#        login.
+#      - /core/api/apps/github/events, slack/events, slack/commands,
+#        slack/slash: third-party webhooks, each behind its HMAC signature.
+#   3. The upstream image seeds a well-known admin login. The one-shot
+#      bootstrap service replaces that password with this device's
+#      APP_PASSWORD after first boot (shown by Umbrel via
+#      deterministicPassword), and leaves any password the owner chose alone.
+#   4. The image runs as uid 65532 and its embedded PostgreSQL cannot run
 #      under a uid without a passwd entry, so a one-shot root init service
 #      (reusing the same image) hands the data directory to uid 65532.
-#   4. Database, generated secrets, uploads, and the search index persist
+#   5. Database, generated secrets, uploads, and the search index persist
 #      under APP_DATA_DIR/data. Upstream generates internal secrets there.
-#   5. Upstream's baked-in Sentry crash reporting is disabled by default.
-#   6. Pinned to the upstream multi-arch (amd64 + arm64) release tag and digest.
+#   6. Upstream's baked-in Sentry crash reporting is disabled by default.
+#   7. Images are pinned to multi-arch (amd64 + arm64) release tags and digests.
 
 services:
   app_proxy:
     environment:
-      APP_HOST: yakitori-oxynote_web_1
-      APP_PORT: 8080
+      APP_HOST: yakitori-oxynote_proxy_1
+      APP_PORT: 80
       # MCP clients (Claude Code, Codex, ...) authenticate with Oxynote's own
-      # OAuth bearer tokens and cannot complete Umbrel's login page. The
-      # browser-facing authorize and consent pages stay behind Umbrel's login.
-      PROXY_AUTH_WHITELIST: "/core/api/mcp,/core/api/mcp/*,/.well-known/oauth-protected-resource*,/.well-known/oauth-authorization-server*,/.well-known/openid-configuration*,/api/auth/oauth2/register,/api/auth/oauth2/token,/api/auth/oauth2/revoke,/core/api/apps/github/events,/core/api/apps/slack/events,/core/api/apps/slack/commands,/core/api/apps/slack/slash"
-      # Keep collaborative-editing WebSockets, MCP streams, and long AI
-      # assistant replies open across Umbrel's proxy (milliseconds).
-      PROXY_TIMEOUT: 3600000
+      # OAuth bearer tokens and cannot complete Umbrel's login page. See 2.
+      PROXY_AUTH_WHITELIST: "/core/api/mcp,/core/api/mcp/*,/.well-known/oauth-protected-resource,/.well-known/oauth-protected-resource/*,/.well-known/oauth-authorization-server,/.well-known/oauth-authorization-server/*,/.well-known/openid-configuration,/api/auth/oauth2/register,/api/auth/oauth2/token,/api/auth/oauth2/revoke,/core/api/apps/github/events,/core/api/apps/slack/events,/core/api/apps/slack/commands,/core/api/apps/slack/slash"
 
   # One-shot root init. Umbrel creates APP_DATA_DIR/data owned by uid 1000
   # (or root); Oxynote runs as uid 65532. Reuses the already-pulled image so
@@ -61,5 +74,201 @@ services:
       OXYNOTE_CRASH_REPORTING_DISABLED: "true"
     volumes:
       - ${APP_DATA_DIR}/data:/oxynote/data
-    # The image ships its own layered HEALTHCHECK (all internal services plus
-    # the Caddy front door, start period 180s).
+    # The image's own layered probe (every internal service plus the Caddy
+    # front door), declared here so dependents can gate on it.
+    healthcheck:
+      test: ["CMD", "/usr/bin/node", "/oxynote/prod/healthcheck.mjs"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  # One-shot: replaces the upstream default admin password with APP_PASSWORD.
+  # Signs in with the upstream default; if that fails with 401 the password was
+  # already changed (by this job or the owner) and nothing is touched.
+  bootstrap:
+    image: ghcr.io/oxynote/oxynote:0.11.0@sha256:02ed0f65c4d5f1f8d8cc6751a055639fa440aba9646c73c687b8d7c5d4c1fdee
+    restart: on-failure
+    depends_on:
+      web:
+        condition: service_healthy
+    entrypoint:
+      - /usr/bin/node
+      - -e
+      - |
+        const base = "http://yakitori-oxynote_web_1:8080/auth-realtime/api/auth";
+        let origin = process.env.OXYNOTE_PUBLIC_URL || "";
+        while (origin.endsWith("/")) origin = origin.slice(0, -1);
+        const email = "admin@example.com";
+        const upstreamDefault = "oxynote-admin-1234";
+        const target = process.env.ADMIN_PASSWORD || "";
+        const headers = { "content-type": "application/json", origin: origin };
+        async function main() {
+          if (target.length < 8) throw new Error("APP_PASSWORD is missing");
+          const signIn = await fetch(base + "/sign-in/email", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({ email: email, password: upstreamDefault }),
+          });
+          if (signIn.status === 401) {
+            console.log("The upstream default admin login no longer works; leaving the password alone.");
+            return;
+          }
+          if (!signIn.ok) throw new Error("sign-in returned " + signIn.status + ": " + (await signIn.text()));
+          const cookie = signIn.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+          const change = await fetch(base + "/change-password", {
+            method: "POST",
+            headers: Object.assign({}, headers, { cookie: cookie }),
+            body: JSON.stringify({ currentPassword: upstreamDefault, newPassword: target, revokeOtherSessions: true }),
+          });
+          if (!change.ok) throw new Error("change-password returned " + change.status + ": " + (await change.text()));
+          console.log("Set the admin password to this Umbrel's app password.");
+          // Drop this job's own session; the password change may have reissued it.
+          const renewed = change.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+          await fetch(base + "/sign-out", {
+            method: "POST",
+            headers: Object.assign({}, headers, { cookie: renewed || cookie }),
+            body: "{}",
+          }).catch(() => {});
+        }
+        main().catch((error) => {
+          console.error(String(error));
+          process.exit(1);
+        });
+    environment:
+      OXYNOTE_PUBLIC_URL: ${APP_OXYNOTE_PUBLIC_URL}
+      ADMIN_PASSWORD: ${APP_PASSWORD}
+
+  # Origin-rewriting router in front of Oxynote; see 1 and the template's
+  # header. Inlined so Umbrel updates apply config changes.
+  proxy:
+    image: nginx:1.30.8-alpine@sha256:8eb04fe3b385090e9aa02961f77398ad09b6bf33ab07f6669a5bb7acce22c0d3
+    restart: on-failure
+    depends_on:
+      web:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        canon="$${OXYNOTE_PUBLIC_URL%/}"
+        canon_host="$${canon#*://}"
+        printf '%s\n' "$$NGINX_TEMPLATE" | sed -e "s#__CANON__#$$canon#g" -e "s#__CANON_HOST__#$$canon_host#g" > /etc/nginx/conf.d/default.conf
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
+    environment:
+      OXYNOTE_PUBLIC_URL: ${APP_OXYNOTE_PUBLIC_URL}
+      NGINX_TEMPLATE: |
+        # Rendered at container start: the placeholders below are filled with
+        # OXYNOTE_PUBLIC_URL (the canonical origin) and its host[:port].
+        #
+        # Oxynote binds its browser URLs, trusted origins, and cookie domain to that
+        # one origin. This router lets the same instance be used from any address the
+        # Umbrel answers on (.local, LAN IP, Tailscale IP, tailscale serve):
+        #   - the Nuxt runtime config in HTML points the browser at the address it
+        #     is actually on (https/wss),
+        #   - a same-origin Origin/Referer (its host equals the request's Host) is
+        #     presented to Oxynote as the canonical origin; a cross-site Origin is
+        #     passed through unchanged, so Oxynote still rejects it,
+        #   - session cookies become host-only (an empty Domain attribute is ignored
+        #     by browsers, RFC 6265 5.2.3) instead of Domain=<canonical host>,
+        #   - absolute redirects to the canonical origin follow the current address.
+        # Plain-HTTP page loads are sent to HTTPS (Oxynote's session cookies are
+        # Secure); API and MCP requests keep working over plain HTTP.
+
+        map $$http_x_forwarded_proto $$client_scheme {
+            default $$http_x_forwarded_proto;
+            ""      http;
+        }
+
+        map $$client_scheme $$client_ws_scheme {
+            https   wss;
+            default ws;
+        }
+
+        map $$http_upgrade $$connection_upgrade {
+            default upgrade;
+            ""      close;
+        }
+
+        map $$origin_rewritten $$client_acao {
+            "1"     $$http_origin;
+            default $$upstream_http_access_control_allow_origin;
+        }
+
+        # sub_filter only sees uncompressed bodies; only HTML needs rewriting.
+        map $$http_accept $$upstream_accept_encoding {
+            ~*text/html "";
+            default     $$http_accept_encoding;
+        }
+
+        server {
+            listen 80;
+
+            # Re-resolve the app container so a restart with a new IP is followed.
+            resolver 127.0.0.11 valid=10s ipv6=off;
+            set $$oxynote yakitori-oxynote_web_1:8080;
+
+            # Above Caddy's own 30 MB request limit inside the image.
+            client_max_body_size 32m;
+            proxy_http_version 1.1;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+
+            location / {
+                set $$nav_redirect "";
+                if ($$client_scheme = http) {
+                    set $$nav_redirect "h";
+                }
+                if ($$request_method = GET) {
+                    set $$nav_redirect "$${nav_redirect}g";
+                }
+                if ($$http_accept ~* "text/html") {
+                    set $$nav_redirect "$${nav_redirect}a";
+                }
+                if ($$nav_redirect = "hga") {
+                    return 302 https://$$http_host$$request_uri;
+                }
+
+                set $$origin_out $$http_origin;
+                set $$origin_rewritten "";
+                set $$origin_check "$$http_host|$$http_origin";
+                if ($$origin_check ~* "^([^|]+)\|https?://\1$$") {
+                    set $$origin_out "__CANON__";
+                    set $$origin_rewritten 1;
+                }
+                set $$referer_out $$http_referer;
+                set $$referer_check "$$http_host|$$http_referer";
+                if ($$referer_check ~* "^([^|]+)\|https?://\1(/.*)?$$") {
+                    set $$referer_out "__CANON__$$2";
+                }
+
+                proxy_set_header Host $$http_host;
+                proxy_set_header Origin $$origin_out;
+                proxy_set_header Referer $$referer_out;
+                proxy_set_header X-Forwarded-Proto $$client_scheme;
+                proxy_set_header X-Forwarded-Host $$http_host;
+                proxy_set_header Upgrade $$http_upgrade;
+                proxy_set_header Connection $$connection_upgrade;
+                proxy_set_header Accept-Encoding $$upstream_accept_encoding;
+
+                proxy_hide_header Access-Control-Allow-Origin;
+                add_header Access-Control-Allow-Origin $$client_acao always;
+                proxy_redirect __CANON__/ $$client_scheme://$$http_host/;
+                proxy_cookie_domain ~.+ "";
+
+                sub_filter_once off;
+                sub_filter "https://__CANON_HOST__" "$$client_scheme://$$http_host";
+                sub_filter "wss://__CANON_HOST__" "$$client_ws_scheme://$$http_host";
+
+                proxy_pass http://$$oxynote;
+            }
+        }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
