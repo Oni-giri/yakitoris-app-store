@@ -1,5 +1,7 @@
 # Yakitori's Umbrel App Store
 
+![Yakitori's App Store — plug-in tools for your AI agent, self-hosted on Umbrel](assets/hero.png)
+
 Self-hosted apps for people and AI agents on [umbrelOS](https://umbrel.com/).
 
 ## Add to Umbrel
