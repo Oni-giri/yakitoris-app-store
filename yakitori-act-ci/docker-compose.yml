@@ -43,7 +43,7 @@ services:
       - ${APP_DATA_DIR}/data/dind-run:/var/run/dind
 
   web:
-    image: ghcr.io/oni-giri/act-ci:0.1.2@sha256:21b05ca399912e51c23857a749a41fb66c8c6d47f6eb2b027a2e9d103485e685
+    image: ghcr.io/oni-giri/act-ci:0.1.3@sha256:790574c0a8e63903fce061d5d06cde7e81d680cda4eb7af5e899af74b1f42e85
     user: "1000:1000"
     restart: on-failure
     init: true
