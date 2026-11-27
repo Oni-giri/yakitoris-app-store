@@ -4,7 +4,7 @@ storage:
   dataRoot: data
 category: automation
 name: Keeper.sh
-version: "2.34.5"
+version: "2.34.6"
 tagline: Keep all your calendars in sync, with an API and MCP for AI agents
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-keeper/icon.svg
 description: >-
@@ -82,10 +82,8 @@ description: >-
   Back up this app's data: the database holds your connected accounts, and
   stored CalDAV passwords are encrypted with a key tied to this Umbrel.
 releaseNotes: >-
-  Initial Umbrel package of Keeper.sh 2.34.5 (amd64 and arm64): the all-in-one
-  image with PostgreSQL 17 and Redis, HTTPS sessions on umbrelOS 2.0+, direct
-  REST API, iCal feed, and MCP passthrough, and the built-in MCP server enabled
-  for AI assistants.
+  Updates Keeper.sh to 2.34.6. See what changed upstream:
+  https://github.com/ridafkih/keeper.sh/releases/tag/v2.34.6
 developer: Rida F'kih
 website: https://www.keeper.sh
 dependencies: []
@@ -94,9 +92,9 @@ support: https://github.com/ridafkih/keeper.sh/issues
 port: 8792
 requiresHttps: true
 gallery:
-  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/open-graph.png
-  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/product/dashboard-light.png
-  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.5/applications/web/public/product/dashboard-dark.png
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.6/applications/web/public/open-graph.png
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.6/applications/web/public/product/dashboard-light.png
+  - https://raw.githubusercontent.com/ridafkih/keeper.sh/v2.34.6/applications/web/public/product/dashboard-dark.png
 path: ""
 defaultUsername: ""
 defaultPassword: ""

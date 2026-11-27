@@ -1,4 +1,4 @@
-# Keeper.sh 2.34.5 "standalone" image (web UI, API, cron, worker, MCP server,
+# Keeper.sh 2.34.6 "standalone" image (web UI, API, cron, worker, MCP server,
 # PostgreSQL 17, Redis, and Caddy under s6-overlay), adapted for umbrelOS 2.0+:
 #   1. Served over Umbrel's HTTPS proxy (requiresHttps: true) at one canonical
 #      origin (exports.sh). better-auth marks session cookies Secure for an
@@ -43,7 +43,7 @@ services:
       PROXY_AUTH_BLACKLIST: "/api/v1/agent-feedback,/api/v1/agent-feedback/*"
 
   web:
-    image: ghcr.io/ridafkih/keeper-standalone:2.34.5@sha256:7b54c46b5ab7c0cc032b71620bd9e9d8a2e6d0ba83db1eef50573515a427fa71
+    image: ghcr.io/ridafkih/keeper-standalone:2.34.6@sha256:1ce128a4694bc40952b2bb3eba15b4d333de769ef23399ddbef9279e8e361b48
     restart: on-failure
     # Runs as root deliberately: s6-overlay's /init must be PID 1 as root to
     # supervise. It then drops the Keeper services to the image's keeper user
