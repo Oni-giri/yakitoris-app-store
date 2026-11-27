@@ -97,6 +97,7 @@ jobs:
           python3 - <<'PY'
           import os
           import re
+          import sys
           import urllib.error
           import urllib.request
           from pathlib import Path
@@ -106,15 +107,27 @@ jobs:
           digest = os.environ["DIGEST"]
 
           compose_path = Path("yakitori-oxynote/docker-compose.yml")
+          app_path = Path("yakitori-oxynote/umbrel-app.yml")
           compose_text = compose_path.read_text()
-          # Both the one-shot init service and the app share one image pin.
+          app_text = app_path.read_text()
+
+          # Package-only releases are "<upstream>-umbrel.N"; never "update" those back
+          # to the bare upstream version they already ship.
+          current = re.search(r'^version: "([0-9]+\.[0-9]+\.[0-9]+)(-umbrel\.[0-9]+)?"$', app_text, re.M)
+          if not current:
+              raise SystemExit("Could not read the version field in umbrel-app.yml")
+          if current.group(1) == version:
+              print(f"Oxynote {version} is already packaged ({current.group(0)})")
+              sys.exit(0)
+
+          # The init, web, and bootstrap services share one image pin.
           new_compose, n_img = re.subn(
               r"ghcr\.io/oxynote/oxynote:\S+",
               f"ghcr.io/oxynote/oxynote:{version}@{digest}",
               compose_text,
           )
-          if n_img != 2:
-              raise SystemExit(f"Expected 2 oxynote image references, matched {n_img}")
+          if n_img != 3:
+              raise SystemExit(f"Expected 3 oxynote image references, matched {n_img}")
           new_compose, n_head = re.subn(
               r"^# Oxynote [0-9]+\.[0-9]+\.[0-9]+ ",
               f"# Oxynote {version} ",
@@ -124,12 +137,9 @@ jobs:
           )
           if n_head != 1:
               raise SystemExit("Expected the version in the compose header comment")
-          compose_path.write_text(new_compose)
 
-          app_path = Path("yakitori-oxynote/umbrel-app.yml")
-          app_text = app_path.read_text()
           new_app, n_ver = re.subn(
-              r'^version: "[0-9]+\.[0-9]+\.[0-9]+"$',
+              r'^version: "[0-9]+\.[0-9]+\.[0-9]+(-umbrel\.[0-9]+)?"$',
               f'version: "{version}"',
               app_text,
               flags=re.M,
@@ -159,17 +169,32 @@ jobs:
           else:
               print("Some icon/gallery assets are missing at the new tag; keeping the old URLs")
 
-          if new_app != app_text:
-              new_app, n_notes = re.subn(
-                  # (?m) only: with (?s), ".*" would cross newlines and
-                  # swallow every key after releaseNotes.
-                  r"(?m)^releaseNotes: >-\n(?:  .*\n?)+",
-                  f"releaseNotes: >-\n  Updates Oxynote to {version}. See what changed upstream:\n  https://github.com/oxynote/oxynote/releases/tag/{ref}\n",
-                  new_app,
-                  count=1,
-              )
-              if n_notes != 1:
-                  raise SystemExit("Expected a releaseNotes block in umbrel-app.yml")
+          # Replace the whole releaseNotes value: a `>-` block (indented lines and the
+          # blank lines between paragraphs) or a one-line value such as "". (?m) only:
+          # with (?s), ".*" would cross newlines and swallow every key after it.
+          new_app, n_notes = re.subn(
+              r"(?m)^releaseNotes:.*\n(?:(?:  .*)?\n)*",
+              f"releaseNotes: >-\n  Updates Oxynote to {version}. See what changed upstream:\n  https://github.com/oxynote/oxynote/releases/tag/{ref}\n",
+              new_app,
+              count=1,
+          )
+          if n_notes != 1:
+              raise SystemExit("Expected a releaseNotes block in umbrel-app.yml")
+
+          # Guard against a regex eating structure: top-level manifest keys and
+          # compose service names must be unchanged.
+          def top_keys(text):
+              return re.findall(r"(?m)^([A-Za-z][A-Za-z0-9_]*):", text)
+
+          def services(text):
+              return re.findall(r"(?m)^  ([a-z][a-z0-9_-]*):$", text)
+
+          if top_keys(new_app) != top_keys(app_text):
+              raise SystemExit("umbrel-app.yml top-level keys changed; refusing to write")
+          if services(new_compose) != services(compose_text):
+              raise SystemExit("docker-compose.yml services changed; refusing to write")
+
+          compose_path.write_text(new_compose)
           app_path.write_text(new_app)
           PY
 
