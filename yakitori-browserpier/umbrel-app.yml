@@ -6,7 +6,7 @@ storage:
   dataRoot: data
 category: developer
 name: BrowserPier
-version: "0.5.0"
+version: "0.6.0"
 tagline: Persistent browsers your AI agents can borrow
 icon: https://raw.githubusercontent.com/Oni-giri/yakitoris-app-store/master/yakitori-browserpier/icon.svg
 description: >-
@@ -42,13 +42,15 @@ description: >-
   - Agents connect to /api, /cdp and /mcp, and phones open handoff links under /h,
   without an Umbrel login. BrowserPier checks their own tokens, PIN and links.
 releaseNotes: >-
-  Session recording: turn on Record sessions in a profile's settings to
-  replay what agents did in its browser, with gaps skipped and links from
-  the activity log. It is off by default, only you can turn it on, and a
-  person is never recorded: it stops when you take control or open a
-  handoff. Settings sets how long recordings are kept and how much space
-  they take. Browsers started by 0.4.x are closed gracefully on the first
-  start, logins kept.
+  Optional two-step sign-in with an authenticator app, a webhook that tells
+  you when an agent needs a person, an activity log that outlives the
+  browser, and proxies that give each profile its own exit, with a Test
+  button. File choosers now open a box with the profile's uploads instead of
+  a dialog, and handing back takes effect before it says so. Agents get call
+  ids against double actions, a Visual-mode element tree with click by ref,
+  and exact typing of accents and emoji. Back up your data first: 0.5.x
+  can't open it afterwards. Browsers started by 0.5.x are closed gracefully
+  on the first start, logins kept.
 developer: Oni-giri
 website: https://github.com/Oni-giri/browser-pier
 dependencies: []
