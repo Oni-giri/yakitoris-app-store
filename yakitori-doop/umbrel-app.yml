@@ -4,9 +4,9 @@ storage:
 id: yakitori-doop
 category: files
 name: Doop
-version: "0.15.0"
+version: "0.16.0"
 tagline: Multiplayer design canvas for people and AI agents
-icon: https://raw.githubusercontent.com/kgoedecke/doop/v0.15.0/desktop/app-icon.png
+icon: https://raw.githubusercontent.com/kgoedecke/doop/v0.16.0/desktop/app-icon.png
 description: >-
   Doop is a collaborative design canvas where people and AI agents sketch,
   review and iterate together in real time. It includes an MCP server for
@@ -36,9 +36,8 @@ description: >-
   integrations and agent tools; install it only on an Umbrel you trust and keep
   it updated.
 releaseNotes: >-
-  Sign-in works over Tailscale, a custom domain and Tor, not just
-  http://umbrel.local. Trusted origins now cover the device's own domains
-  instead of a single hardcoded hostname.
+  Updates Doop to 0.16.0. See what changed upstream:
+  https://github.com/kgoedecke/doop/releases/tag/v0.16.0
 developer: Kai Goedecke
 website: https://doop.design
 repo: https://github.com/kgoedecke/doop
